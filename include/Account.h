@@ -1,0 +1,33 @@
+//
+// Created by Patrick Charlson on 21/4/2026.
+//
+
+#ifndef PFMS_ACCOUNT_H
+#define PFMS_ACCOUNT_H
+
+#include "Bucket.h"
+#include <string>
+#include <vector>
+
+struct Status {
+  bool ok;
+  std::string message;
+  static Status success(std::string m = "") { return {true, std::move(m)}; }
+  static Status failure(std::string m) { return {false, std::move(m)}; }
+};
+
+class Account {
+  public:
+  Status createBucket(const std::string &name, double percentage, bool committed = false);
+  Status editBucket(size_t index, const std::string &newName, double newPercentage);
+  Status deleteBucket(size_t index);
+  Status toggleCommitted(size_t index);
+
+  const std::vector<Bucket> &buckets() const { return buckets_; }
+
+  private:
+  std::vector<Bucket> buckets_;
+};
+
+
+#endif // PFMS_ACCOUNT_H
