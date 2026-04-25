@@ -39,3 +39,10 @@ LoginOutcome AuthService::login(const std::string &username, const std::string &
   currentUser_ = it->second.get();
   return LoginOutcome::Success;
 }
+
+void AuthService::logout() {
+  if (currentUser_) {
+    currentUser_->account().clearSession();
+    currentUser_ = nullptr;
+  }
+}

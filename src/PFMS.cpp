@@ -106,6 +106,10 @@ void PFMS::runWelcome() {
     runLogin();
   else if (line == "2")
     runRegister();
+  else if (line == "3")
+    quit_ = true;
+  else
+    showError("Please enter 1, 2 or 3.");
 }
 
 void PFMS::runRegister() {
@@ -168,4 +172,10 @@ void PFMS::runMainMenu() {
   if (line == "?") {
     showHelp("Main Menu");
   }
+
+  else if (line == "7") {
+    auth_.logout();
+    showInfo("Logged out. Session cleared.");
+  } else
+    showError("Please enter a number from 1 to 7.");
 }
