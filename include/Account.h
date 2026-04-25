@@ -25,6 +25,10 @@ class Account {
 
   const std::vector<Bucket> &buckets() const { return buckets_; }
 
+  // ---- Session lifecycle ----
+  // Wipes all in-memory state. Called on logout.
+  void clearSession();
+
   private:
   std::vector<Bucket> buckets_;
 };

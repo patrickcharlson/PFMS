@@ -14,4 +14,5 @@ add_executable(PFMS
         src/AuthService.cpp
         include/Sha256.h
         src/Sha256.cpp
+#        tests/tests.cpp
 )
