@@ -7,10 +7,10 @@
 #include <string>
 
 class Sha256 {
-  public:
-  static std::string hash(const std::string &input);
+public:
+  static std::string hash(const std::string& input);
 
-  private:
+private:
   static void transform(uint32_t state[8], const uint8_t block[64]);
 };
 

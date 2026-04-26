@@ -12,14 +12,14 @@
 #include "Account.h"
 
 class User {
-  public:
+public:
   User(std::string username, std::string passwordHash);
 
-  const std::string &username() { return username_; }
-  const std::string &passwordHash() { return passwordHash_; }
-  Account &account() { return account_; }
+  const std::string& username() { return username_; }
+  const std::string& passwordHash() { return passwordHash_; }
+  Account& account() { return account_; }
 
-  private:
+private:
   std::string username_;
   std::string passwordHash_;
   Account account_;
@@ -28,10 +28,10 @@ class User {
 enum class LoginOutcome { Success, BadCredentials, Locked };
 
 class AuthService {
-  public:
-  Status registerUser(const std::string &username, const std::string &password);
+public:
+  Status registerUser(const std::string& username, const std::string& password);
 
-  LoginOutcome login(const std::string &username, const std::string &password);
+  LoginOutcome login(const std::string& username, const std::string& password);
 
   bool isLocked() const { return locked_; }
   int failedAttempts() const { return failedAttempts_; }
@@ -39,7 +39,7 @@ class AuthService {
   User *currentUser() { return currentUser_; }
   void logout();
 
-  private:
+private:
   std::map<std::string, std::unique_ptr<User>> users_;
   User *currentUser_{nullptr};
   int failedAttempts_{0};
