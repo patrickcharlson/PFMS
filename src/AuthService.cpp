@@ -11,7 +11,7 @@ User::User(std::string username, std::string passwordHash) :
     username_(std::move(username)), passwordHash_(std::move(passwordHash)) {}
 
 
-Status AuthService::registerUser(const std::string &username, const std::string &password) {
+Status AuthService::registerUser(const std::string& username, const std::string& password) {
   if (username.empty())
     return Status::failure("Username cannot be empty.");
   if (password.size() < 4)
@@ -22,7 +22,7 @@ Status AuthService::registerUser(const std::string &username, const std::string 
   return Status::success("Account created. You can now log in.");
 }
 
-LoginOutcome AuthService::login(const std::string &username, const std::string &password) {
+LoginOutcome AuthService::login(const std::string& username, const std::string& password) {
   if (locked_)
     return LoginOutcome::Locked;
 

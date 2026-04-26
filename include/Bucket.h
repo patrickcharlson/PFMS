@@ -9,16 +9,17 @@
 
 
 class Bucket {
-  public:
+public:
   Bucket(std::string name, double percentage, bool committed = false);
 
-  const std::string &name() { return name_; }
+  const std::string& name() const { return name_; }
   double percentage() const { return percentage_; }
   double balance() const { return balance_; }
+  bool committed() const { return committed_; }
 
-  void setName(const std::string &n) { name_ = n; }
+  void setName(const std::string& n) { name_ = n; }
 
-  private:
+private:
   std::string name_;
   double percentage_;
   double balance_{0.0};
