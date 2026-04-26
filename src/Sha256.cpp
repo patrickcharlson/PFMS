@@ -21,7 +21,7 @@ static constexpr uint32_t K[64] = {
 static uint32_t rotr(const uint32_t x, const uint32_t n) { return x >> n | x << (32 - n); }
 
 
-std::string Sha256::hash(const std::string &input) {
+std::string Sha256::hash(const std::string& input) {
   uint32_t state[8] = {0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19};
 
   const uint64_t bitLen = static_cast<uint64_t>(input.size()) * 8;
@@ -61,10 +61,10 @@ void Sha256::transform(uint32_t state[8], const uint8_t block[64]) {
 
   for (int i = 0; i < 64; ++i) {
     const uint32_t S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
-    const uint32_t ch = e & f ^ ~e & g;
+    const uint32_t ch = (e & f) ^ (~e & g);
     const uint32_t t1 = h + S1 + ch + K[i] + w[i];
     const uint32_t S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
-    const uint32_t mj = a & b ^ a & c ^ b & c;
+    const uint32_t mj = (a & b) ^ (a & c) ^ (b & c);
     const uint32_t t2 = S0 + mj;
     h = g;
     g = f;

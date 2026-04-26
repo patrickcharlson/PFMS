@@ -3,7 +3,7 @@
 //
 
 #include "../include/PFMS.h"
-
+#include <iomanip>
 #include <iostream>
 #include <string>
 
@@ -30,7 +30,7 @@ void PFMS::run() {
   }
 }
 
-void PFMS::showHeader(const std::string &title) {
+void PFMS::showHeader(const std::string& title) {
   std::cout << "\n" << DIVIDER << "\n";
   std::cout << " PFMS — " << title << "  [? = Help]\n";
   std::cout << DIVIDER << "\n";
@@ -39,18 +39,18 @@ void PFMS::showHeader(const std::string &title) {
 
 // ---------- Screen scaffolding ----------
 
-void PFMS::showFooter(const std::string &prompt) { std::cout << SUBDIV << "\n " << prompt << " "; }
+void PFMS::showFooter(const std::string& prompt) { std::cout << SUBDIV << "\n " << prompt << " "; }
 
-void PFMS::showError(const std::string &message) { std::cout << "\n[ERROR] " << message << "\n"; }
+void PFMS::showError(const std::string& message) { std::cout << "\n[ERROR] " << message << "\n"; }
 
-void PFMS::showWarning(const std::string &message) { std::cout << "\n*** WARNING ***\n " << message << "\n"; }
+void PFMS::showWarning(const std::string& message) { std::cout << "\n*** WARNING ***\n " << message << "\n"; }
 
-void PFMS::showInfo(const std::string &message) { std::cout << "\n " << message << "\n"; }
+void PFMS::showInfo(const std::string& message) { std::cout << "\n " << message << "\n"; }
 
 
 // ---------- Input helpers ----------
 
-bool PFMS::readLine(const std::string &prompt, std::string &out, bool /*maskHelp*/) {
+bool PFMS::readLine(const std::string& prompt, std::string& out, bool /*maskHelp*/) {
   std::cout << " " << prompt << " ";
   if (!std::getline(std::cin, out)) {
     out.clear();
@@ -65,7 +65,7 @@ bool PFMS::readLine(const std::string &prompt, std::string &out, bool /*maskHelp
 
 // ---------- Help ----------
 
-void PFMS::showHelp(const std::string &screen) {
+void PFMS::showHelp(const std::string& screen) {
   std::cout << "\n" << SUBDIV << "\n HELP — " << screen << "\n" << SUBDIV << "\n";
   if (screen == "Main Menu") {
     std::cout << " Choose a menu option by number.\n"
@@ -172,10 +172,53 @@ void PFMS::runMainMenu() {
   if (line == "?") {
     showHelp("Main Menu");
   }
-
+  if (line == "1")
+    runAccountSummary();
   else if (line == "7") {
     auth_.logout();
     showInfo("Logged out. Session cleared.");
   } else
     showError("Please enter a number from 1 to 7.");
+}
+
+void PFMS::runAccountSummary() {
+  const auto& acc = auth_.currentUser()->account();
+  showHeader("ACCOUNT SUMMARY");
+  std::cout << " SAFE TO SPEND: " << fmtMoney(acc.safeToSpend()) << "\n";
+  std::cout << " " << SUBDIV << "\n";
+  std::cout << " Total Balance:    " << fmtMoney(acc.totalBalance()) << "\n";
+  std::cout << " Committed Funds:  " << fmtMoney(acc.committedTotal()) << "\n";
+  std::cout << " BUCKETS:\n";
+  if (acc.buckets().empty()) {
+    std::cout << "   (no buckets configured)\n";
+  } else {
+    size_t i = 1;
+    for (const auto& b: acc.buckets()) {
+      std::cout << "   [" << i++ << "] " << std::left << std::setw(15) << b.name() << " " << std::setw(10)
+                << fmtMoney(b.balance()) << " " << std::setw(4)
+                << (std::to_string(static_cast<int>(b.percentage())) + "%") << " " << (b.committed() ? "COMMITTED" : "")
+                << "\n";
+    }
+  }
+}
+
+
+// ---------- Formatting ----------
+
+std::string PFMS::fmtMoney(const double v) {
+  const bool negative = v < 0;
+  const double abs = negative ? -v : v;
+  std::ostringstream raw;
+  raw << std::fixed << std::setprecision(2) << abs;
+  std::string s = raw.str();
+
+  const auto dot = s.find('.');
+  std::string intPart = s.substr(0, dot);
+  const std::string decPart = s.substr(dot);
+
+  if (intPart.size() > 3) {
+    for (int i = static_cast<int>(intPart.size()) - 3; i > 0; i -= 3)
+      intPart.insert(static_cast<size_t>(i), ",");
+  }
+  return std::string(negative ? "-$" : "$") + intPart + decPart;
 }

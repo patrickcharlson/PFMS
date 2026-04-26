@@ -2,7 +2,7 @@
 ---
 Language: Cpp
 BasedOnStyle: LLVM
-AccessModifierOffset: -4
+AccessModifierOffset: -2
 AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
 AlignOperands: true
@@ -31,6 +31,7 @@ BreakConstructorInitializersBeforeComma: false
 ColumnLimit: 120
 ConstructorInitializerAllOnOneLineOrOnePerLine: false
 ContinuationIndentWidth: 8
+ReferenceAlignment: Left
 IncludeBlocks: Preserve
 IncludeCategories:
   - Regex: '^"(llvm|llvm-c|clang|clang-c)/'
