@@ -31,7 +31,8 @@ private:
   // ---- Input helpers ----
 
   static bool readLine(const std::string& prompt, std::string& out, bool maskHelp = true);
-
+  static bool readDouble(const std::string& prompt, double& out) ;
+  static bool confirm(const std::string& prompt) ; // Y/N - returns true on Y
 
   // ---- Help (context-sensitive) ----
 
@@ -45,6 +46,8 @@ private:
   void runLogin();
   void runMainMenu();
   void runAccountSummary();
+  void runBucketMenu();
+  void runCreateBucket();
 
 
   // ---- Formatting ----
