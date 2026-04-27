@@ -3,6 +3,9 @@
 //
 
 #include "../include/Bucket.h"
+
+#include "Account.h"
+
 #include <string>
 
 Bucket::Bucket(std::string name, double percentage, bool committed) :

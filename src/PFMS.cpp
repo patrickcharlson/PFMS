@@ -62,6 +62,37 @@ bool PFMS::readLine(const std::string& prompt, std::string& out, bool /*maskHelp
   return true;
 }
 
+bool PFMS::readDouble(const std::string& prompt, double& out) {
+  std::string line;
+  if (!readLine(prompt, line))
+    return false;
+  if (line == "?")
+    return false;
+  try {
+    size_t idx = 0;
+    const double v = std::stod(line, &idx);
+    if (idx != line.size())
+      return false;
+    out = v;
+    return true;
+  } catch (...) {
+    return false;
+  }
+}
+
+bool PFMS::confirm(const std::string& prompt) {
+  std::string line;
+  while (true) {
+    if (!readLine(prompt + " (Y/N):", line))
+      return false;
+    if (line == "Y" || line == "y")
+      return true;
+    if (line == "N" || line == "n")
+      return false;
+    showError("Please enter Y or N.");
+  }
+}
+
 
 // ---------- Help ----------
 
@@ -174,12 +205,17 @@ void PFMS::runMainMenu() {
   }
   if (line == "1")
     runAccountSummary();
+  else if (line == "2")
+    runBucketMenu();
   else if (line == "7") {
     auth_.logout();
     showInfo("Logged out. Session cleared.");
   } else
     showError("Please enter a number from 1 to 7.");
 }
+
+
+// ---------- Account Summary  ----------
 
 void PFMS::runAccountSummary() {
   const auto& acc = auth_.currentUser()->account();
@@ -202,6 +238,44 @@ void PFMS::runAccountSummary() {
   }
 }
 
+void PFMS::runBucketMenu() {
+  while (true) {
+    showHeader("BUCKET MANAGEMENT");
+    std::cout << " [1] Create Bucket\n [2] Edit Bucket\n [3] Delete Bucket\n"
+              << " [4] Toggle Committed Status\n [5] Back\n";
+    showFooter("Enter choice (1-5) or ? for help:");
+    std::string line;
+    if (!readLine("", line))
+      return;
+    if (line == "?") {
+      showHelp("Bucket Menu");
+      continue;
+    }
+    if (line == "1")
+      runCreateBucket();
+  }
+}
+
+void PFMS::runCreateBucket() {
+  auto& acc = auth_.currentUser()->account();
+  showHeader("CREATE BUCKET");
+  std::string name;
+  if (!readLine("Bucket name (e.g., Rent):", name) || name.empty()) {
+    showError("Bucket name cannot be empty.");
+    return;
+  }
+  double pct;
+  if (!readDouble("Allocation percentage (e.g,. 40):", pct)) {
+    showError("Bucket name cannot be empty");
+    return;
+  }
+  std::string commitLine;
+  const bool committed = confirm("Mark this bucket as Committed?");
+  if (auto [ok, message] = acc.createBucket(name, pct, committed); ok)
+    showInfo(message);
+  else
+    showError(message);
+}
 
 // ---------- Formatting ----------
 

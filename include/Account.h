@@ -18,6 +18,8 @@ struct Status {
 
 class Account {
 public:
+  // ---- Bucket management  ----
+
   Status createBucket(const std::string& name, double percentage, bool committed = false);
   Status editBucket(size_t index, const std::string& newName, double newPercentage);
   Status deleteBucket(size_t index);
@@ -31,6 +33,7 @@ public:
   double totalBalance() const { return totalBalance_; }
   double committedTotal() const;
   double safeToSpend() const;
+  double allocatedPercentageTotal() const;
 
 
   // ---- Session lifecycle ----
