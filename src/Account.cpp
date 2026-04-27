@@ -22,14 +22,35 @@ double Account::committedTotal() const {
 Status Account::createBucket(const std::string& name, double percentage, bool committed) {
   if (name.empty())
     return Status::failure("Bucket name cannot be empty.");
+
   if (percentage < 0.0 || percentage > 100.0)
     return Status::failure("Percentage must be between 0 and 100.");
 
   if (const double newTotal = allocatedPercentageTotal() + percentage; newTotal > 100.0 + 1e-9)
     return Status::failure("Total bucket allocation would exceed 100%. Currently allocated: " +
                            std::to_string(static_cast<int>(allocatedPercentageTotal())) + "%.");
+
   buckets_.emplace_back(name, percentage, committed);
   return Status::success("Bucket '" + name + "' created.");
+}
+
+Status Account::editBucket(const size_t index, const std::string& newName, const double newPercentage) {
+  if (index >= buckets_.size())
+    return Status::failure("Invalid bucket selection");
+
+  if (newName.empty())
+    return Status::failure("Bucket name cannot be empty.");
+
+  if (newPercentage < 0.0 || newPercentage > 100.0)
+    return Status::failure("Percentage must be between 0 and 100.");
+
+  if (const double currentExcludingThis = allocatedPercentageTotal() - buckets_[index].percentage();
+      currentExcludingThis + newPercentage > 100.0 + 1e-9)
+    return Status::failure("Edit would push total allocation above 100%.");
+
+  buckets_[index].setName(newName);
+  buckets_[index].setPercentage(newPercentage);
+  return Status::success("Bucket updated.");
 }
 
 double Account::safeToSpend() const { return round2(totalBalance_ - committedTotal()); }

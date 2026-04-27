@@ -80,6 +80,24 @@ bool PFMS::readDouble(const std::string& prompt, double& out) {
   }
 }
 
+bool PFMS::readSizeT(const std::string& prompt, size_t& out) {
+  std::string line;
+  if (!readLine(prompt, line))
+    return false;
+  if (line == "?")
+    return false;
+  try {
+    size_t idx = 0;
+    const long long v = std::stoll(line, &idx);
+    if (idx != line.size() || v < 0)
+      return false;
+    out = static_cast<size_t>(v);
+    return true;
+  } catch (...) {
+    return false;
+  }
+}
+
 bool PFMS::confirm(const std::string& prompt) {
   std::string line;
   while (true) {
@@ -238,6 +256,9 @@ void PFMS::runAccountSummary() {
   }
 }
 
+
+// ---------- Bucket Menu  ----------
+
 void PFMS::runBucketMenu() {
   while (true) {
     showHeader("BUCKET MANAGEMENT");
@@ -253,6 +274,8 @@ void PFMS::runBucketMenu() {
     }
     if (line == "1")
       runCreateBucket();
+    else if (line == "2")
+      runEditBucket();
   }
 }
 
@@ -272,6 +295,38 @@ void PFMS::runCreateBucket() {
   std::string commitLine;
   const bool committed = confirm("Mark this bucket as Committed?");
   if (auto [ok, message] = acc.createBucket(name, pct, committed); ok)
+    showInfo(message);
+  else
+    showError(message);
+}
+
+void PFMS::runEditBucket() {
+  auto& acc = auth_.currentUser()->account();
+  showHeader("EDIT BUCKET");
+  if (acc.buckets().empty()) {
+    showError("No buckets to edit.");
+  }
+
+  size_t i = 1;
+  for (const auto& b: acc.buckets())
+    std::cout << " [" << i++ << "] " << b.name() << " (" << static_cast<int>(b.percentage()) << "%)\n";
+
+  size_t sel;
+  if (!readSizeT("Select bucket number:", sel) || sel < 1 || sel > acc.buckets().size()) {
+    showError("Invalid bucket selection.");
+  }
+
+  std::string newName;
+  if (!readLine("New name:", newName) || newName.empty()) {
+    showError("Bucket name cannot be empty.");
+  }
+
+  double newPct;
+  if (!readDouble("New percentage (0-100):", newPct)) {
+    showError("Please enter a numeric percentage.");
+  }
+
+  if (auto [ok, message] = acc.editBucket(sel - 1, newName, newPct); ok)
     showInfo(message);
   else
     showError(message);

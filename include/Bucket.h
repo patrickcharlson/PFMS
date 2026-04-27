@@ -18,6 +18,7 @@ public:
   bool committed() const { return committed_; }
 
   void setName(const std::string& n) { name_ = n; }
+  void setPercentage(double p) { percentage_ = p; }
 
 private:
   std::string name_;
