@@ -282,6 +282,10 @@ void PFMS::runBucketMenu() {
       runEditBucket();
     else if (line == "3")
       runDeleteBucket();
+    else if (line == "4")
+      runToggleCommitted();
+    else if (line == "5")
+      return;
     else
       showError("Please enter a number from 1 to 5.");
   }
@@ -366,6 +370,31 @@ void PFMS::runDeleteBucket() {
     showInfo(message);
   else
     showError(message);
+}
+
+void PFMS::runToggleCommitted() {
+  auto& acc = auth_.currentUser()->account();
+  showHeader("TOGGLE COMMITTED");
+  if (acc.buckets().empty()) {
+    showHeader("No buckets configured.");
+    return;
+  }
+  size_t i = 1;
+  for (const auto& b: acc.buckets()) {
+    std::cout << " [" << i++ << "] " << b.name() << " " << (b.committed() ? "[COMMITTED]" : "[not committed]") << "\n";
+  }
+
+  size_t sel;
+  if (!readSizeT("Select bucket number:", sel) || sel < 1 || sel > acc.buckets().size()) {
+    showError("Invalid bucket selection.");
+    return;
+  }
+  if (auto [ok, message] = acc.toggleCommitted(sel - 1); ok) {
+    showInfo(message);
+    showInfo("Updated Safe to Spend: " + fmtMoney(acc.safeToSpend()));
+  } else {
+    showError(message);
+  }
 }
 
 // ---------- Formatting ----------

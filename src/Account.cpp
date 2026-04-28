@@ -63,6 +63,14 @@ Status Account::deleteBucket(const size_t index) {
   return Status::success("Bucket '" + name + "' deleted; balance returned to unallocated pool.");
 }
 
+Status Account::toggleCommitted(const size_t index) {
+  if (index >= buckets_.size())
+    return Status::failure("Invalid bucket selection.");
+  const bool now = !buckets_[index].committed();
+  buckets_[index].setCommitted(now);
+  return Status::success(std::string("Bucket marked as ") + (now ? "COMMITTED." : "not committed."));
+}
+
 double Account::safeToSpend() const { return round2(totalBalance_ - committedTotal()); }
 
 double Account::allocatedPercentageTotal() const {

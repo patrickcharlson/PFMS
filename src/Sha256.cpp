@@ -3,7 +3,7 @@
 //
 
 #include "../include/Sha256.h"
-
+#include <cstdint>
 #include <iomanip>
 #include <sstream>
 #include <string>
