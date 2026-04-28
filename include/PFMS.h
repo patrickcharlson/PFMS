@@ -50,6 +50,7 @@ private:
   void runBucketMenu();
   void runCreateBucket();
   void runEditBucket();
+  void runDeleteBucket();
 
 
   // ---- Formatting ----

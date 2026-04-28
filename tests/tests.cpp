@@ -8,8 +8,8 @@
 #include <iostream>
 #include <string>
 
-static int passed {0};
-static int failed {0};
+static int passed{0};
+static int failed{0};
 
 #define CHECK(cond, label)                                                                                             \
   do {                                                                                                                 \
@@ -23,9 +23,11 @@ static int failed {0};
   } while (0)
 
 
-static void section(const std::string &name) { std::cout << "\n[" << name << "]\n"; }
+static void section(const std::string& name) { std::cout << "\n[" << name << "]\n"; }
 
 int main() {
+
+  // ---- Lockout after 3 failed attempts ----
   section("Lockout after 3 failed attempts");
   {
     AuthService svc;
@@ -35,6 +37,10 @@ int main() {
     CHECK(svc.login("bob", "wrong3") == LoginOutcome::Locked, "fail 3 -> locked");
     CHECK(svc.isLocked(), "isLocked() == true");
     CHECK(svc.login("bob", "rightpass") == LoginOutcome::Locked, "even correct pw blocked");
-
   }
+
+  std::cout << "\n========================================\n";
+  std::cout << " RESULTS: " << passed << " passed, " << failed << " failed\n";
+  std::cout << "========================================\n";
+  return failed == 0 ? 0 : 1;
 }

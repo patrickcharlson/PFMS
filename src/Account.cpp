@@ -34,6 +34,7 @@ Status Account::createBucket(const std::string& name, double percentage, bool co
   return Status::success("Bucket '" + name + "' created.");
 }
 
+
 Status Account::editBucket(const size_t index, const std::string& newName, const double newPercentage) {
   if (index >= buckets_.size())
     return Status::failure("Invalid bucket selection");
@@ -51,6 +52,15 @@ Status Account::editBucket(const size_t index, const std::string& newName, const
   buckets_[index].setName(newName);
   buckets_[index].setPercentage(newPercentage);
   return Status::success("Bucket updated.");
+}
+
+Status Account::deleteBucket(const size_t index) {
+  if (index >= buckets_.size())
+    return Status::failure("Invalid bucket selection.");
+  unallocated_ = round2(unallocated_ + buckets_[index].balance());
+  const std::string name = buckets_[index].name();
+  buckets_.erase(buckets_.begin() + static_cast<long>(index));
+  return Status::success("Bucket '" + name + "' deleted; balance returned to unallocated pool.");
 }
 
 double Account::safeToSpend() const { return round2(totalBalance_ - committedTotal()); }

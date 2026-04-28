@@ -239,7 +239,7 @@ void PFMS::runAccountSummary() {
   const auto& acc = auth_.currentUser()->account();
   showHeader("ACCOUNT SUMMARY");
   std::cout << " SAFE TO SPEND: " << fmtMoney(acc.safeToSpend()) << "\n";
-  std::cout << " " << SUBDIV << "\n";
+  std::cout << "" << SUBDIV << "\n";
   std::cout << " Total Balance:    " << fmtMoney(acc.totalBalance()) << "\n";
   std::cout << " Committed Funds:  " << fmtMoney(acc.committedTotal()) << "\n";
   std::cout << " BUCKETS:\n";
@@ -254,6 +254,10 @@ void PFMS::runAccountSummary() {
                 << "\n";
     }
   }
+  std::cout << " Unallocated:      " << fmtMoney(acc.unallocated()) << "\n";
+  showFooter("Press Enter to return to Main Menu.");
+  std::string s;
+  std::getline(std::cin, s);
 }
 
 
@@ -276,6 +280,10 @@ void PFMS::runBucketMenu() {
       runCreateBucket();
     else if (line == "2")
       runEditBucket();
+    else if (line == "3")
+      runDeleteBucket();
+    else
+      showError("Please enter a number from 1 to 5.");
   }
 }
 
@@ -305,8 +313,8 @@ void PFMS::runEditBucket() {
   showHeader("EDIT BUCKET");
   if (acc.buckets().empty()) {
     showError("No buckets to edit.");
+    return;
   }
-
   size_t i = 1;
   for (const auto& b: acc.buckets())
     std::cout << " [" << i++ << "] " << b.name() << " (" << static_cast<int>(b.percentage()) << "%)\n";
@@ -314,19 +322,47 @@ void PFMS::runEditBucket() {
   size_t sel;
   if (!readSizeT("Select bucket number:", sel) || sel < 1 || sel > acc.buckets().size()) {
     showError("Invalid bucket selection.");
+    return;
   }
-
   std::string newName;
   if (!readLine("New name:", newName) || newName.empty()) {
     showError("Bucket name cannot be empty.");
+    return;
   }
-
   double newPct;
   if (!readDouble("New percentage (0-100):", newPct)) {
     showError("Please enter a numeric percentage.");
+    return;
   }
-
   if (auto [ok, message] = acc.editBucket(sel - 1, newName, newPct); ok)
+    showInfo(message);
+  else
+    showError(message);
+}
+
+void PFMS::runDeleteBucket() {
+  auto& acc = auth_.currentUser()->account();
+  showHeader("DELETE BUCKET");
+  if (acc.buckets().empty()) {
+    showError("No buckets to delete.");
+    return;
+  }
+  size_t i = 1;
+  for (const auto& b: acc.buckets())
+    std::cout << " [" << i++ << "] " << b.name() << " " << fmtMoney(b.balance()) << "\n";
+
+  size_t sel;
+  if (!readSizeT("Select bucket number to delete:", sel) || sel < 1 || sel > acc.buckets().size()) {
+    showError("Invalid bucket selection.");
+    return;
+  }
+  showWarning("Deleting '" + acc.buckets()[sel - 1].name() + "' will return its balance (" +
+              fmtMoney(acc.buckets()[sel - 1].balance()) + ") to the unallocated pool.");
+  if (!confirm("Proceed with deletion?")) {
+    showInfo("Deletion cancelled.");
+    return;
+  }
+  if (auto [ok, message] = acc.deleteBucket(sel - 1); ok)
     showInfo(message);
   else
     showError(message);
