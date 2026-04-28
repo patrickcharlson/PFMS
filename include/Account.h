@@ -33,6 +33,7 @@ public:
   double totalBalance() const { return totalBalance_; }
   double committedTotal() const;
   double safeToSpend() const;
+  double unallocated() const { return unallocated_; }
   double allocatedPercentageTotal() const;
 
 
@@ -44,6 +45,7 @@ public:
 private:
   std::vector<Bucket> buckets_;
   double totalBalance_{0.0};
+  double unallocated_{0.0};
 };
 
 
