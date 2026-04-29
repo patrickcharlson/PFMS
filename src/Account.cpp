@@ -5,8 +5,16 @@
 #include "../include/Account.h"
 
 #include <cmath>
+#include <iomanip>
+#include <sstream>
 
 inline double round2(const double v) { return std::round(v * 100.0) / 100.0; }
+
+inline std::string fmtMoney(const double v) {
+  std::ostringstream oss;
+  oss << "$" << std::fixed << std::setprecision(2) << v;
+  return oss.str();
+}
 
 double Account::committedTotal() const {
   double sum = 0.0;
@@ -33,7 +41,6 @@ Status Account::createBucket(const std::string& name, double percentage, bool co
   buckets_.emplace_back(name, percentage, committed);
   return Status::success("Bucket '" + name + "' created.");
 }
-
 
 Status Account::editBucket(const size_t index, const std::string& newName, const double newPercentage) {
   if (index >= buckets_.size())
@@ -70,6 +77,32 @@ Status Account::toggleCommitted(const size_t index) {
   buckets_[index].setCommitted(now);
   return Status::success(std::string("Bucket marked as ") + (now ? "COMMITTED." : "not committed."));
 }
+
+
+// --------- Money operations ---------
+
+Status Account::deposit(double amount) {
+  if (!(amount > 0.0))
+    return Status::failure("Deposit amount must be positive.");
+  amount = round2(amount);
+  distributeDeposit(amount);
+  totalBalance_ = round2(totalBalance_ + amount);
+  return Status::success("Deposited " + fmtMoney(amount) + ".");
+}
+
+void Account::distributeDeposit(const double amount) {
+  double allocated = 0.0;
+  for (auto& b: buckets_) {
+    const double share = round2(amount * b.percentage() / 100.0);
+    b.adjustBalance(share);
+    allocated += share;
+  }
+  const double remainder = round2(amount - allocated);
+  unallocated_ = round2(unallocated_ + remainder);
+}
+
+
+// --------- Liquidity calculator ---------
 
 double Account::safeToSpend() const { return round2(totalBalance_ - committedTotal()); }
 

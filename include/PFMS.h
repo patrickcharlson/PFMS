@@ -52,6 +52,7 @@ private:
   void runEditBucket();
   void runDeleteBucket();
   void runToggleCommitted();
+  void runDeposit();
 
 
   // ---- Formatting ----

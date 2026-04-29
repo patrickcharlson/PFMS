@@ -225,6 +225,8 @@ void PFMS::runMainMenu() {
     runAccountSummary();
   else if (line == "2")
     runBucketMenu();
+  else if (line == "3")
+    runDeposit();
   else if (line == "7") {
     auth_.logout();
     showInfo("Logged out. Session cleared.");
@@ -396,6 +398,28 @@ void PFMS::runToggleCommitted() {
     showError(message);
   }
 }
+
+
+// ---------- Deposit / Withdraw / Transfer  ----------
+
+void PFMS::runDeposit() {
+  auto& acc = auth_.currentUser()->account();
+  showHeader("DEPOSIT");
+  double amount;
+  if (!readDouble("Enter deposit amount (e.g., 150.00):", amount)) {
+    showError("Please enter a numeric amount (e.g., 150.00).");
+    return;
+  }
+  auto [ok, message] = acc.deposit(amount);
+  if (!ok) {
+    showError(message);
+    return;
+  }
+  showInfo(message);
+  showInfo("New Total Balance: " + fmtMoney(acc.totalBalance()));
+  showInfo("Safe to Spend:     " + fmtMoney(acc.safeToSpend()));
+}
+
 
 // ---------- Formatting ----------
 
