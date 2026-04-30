@@ -2,7 +2,10 @@
 // Created by Patrick Charlson on 25/4/2026.
 //
 
-#include "../include/PFMS.h"
+#include "PFMS.h"
+
+#include "Color.h"
+
 #include <iomanip>
 #include <iostream>
 #include <string>
@@ -41,12 +44,18 @@ void PFMS::showHeader(const std::string& title) {
 
 void PFMS::showFooter(const std::string& prompt) { std::cout << SUBDIV << "\n " << prompt << " "; }
 
-void PFMS::showError(const std::string& message) { std::cout << "\n[ERROR] " << message << "\n"; }
+void PFMS::showError(const std::string& message) {
+  std::cout << "\n" << Color::BrightRed << "[ERROR] " << message << Color::Reset << "\n";
+}
 
-void PFMS::showWarning(const std::string& message) { std::cout << "\n*** WARNING ***\n " << message << "\n"; }
-
-void PFMS::showInfo(const std::string& message) { std::cout << "\n " << message << "\n"; }
-
+void PFMS::showWarning(const std::string& message) {
+  std::cout << "\n"
+            << Color::BrightYellow << "*** WARNING ***" << Color::Reset << "\n " << Color::Yellow << message
+            << Color::Reset << "\n";
+}
+void PFMS::showInfo(const std::string& message) {
+  std::cout << "\n " << Color::Green << message << Color::Reset << "\n";
+}
 
 // ---------- Input helpers ----------
 
@@ -225,6 +234,8 @@ void PFMS::runMainMenu() {
     runAccountSummary();
   else if (line == "2")
     runBucketMenu();
+  else if (line == "3")
+    runDeposit();
   else if (line == "7") {
     auth_.logout();
     showInfo("Logged out. Session cleared.");
@@ -238,11 +249,12 @@ void PFMS::runMainMenu() {
 void PFMS::runAccountSummary() {
   const auto& acc = auth_.currentUser()->account();
   showHeader("ACCOUNT SUMMARY");
-  std::cout << " SAFE TO SPEND: " << fmtMoney(acc.safeToSpend()) << "\n";
+  std::cout << " " << Color::Bold << Color::BrightGreen << "SAFE TO SPEND: " << fmtMoney(acc.safeToSpend())
+            << Color::Reset << "\n";
   std::cout << "" << SUBDIV << "\n";
-  std::cout << " Total Balance:    " << fmtMoney(acc.totalBalance()) << "\n";
-  std::cout << " Committed Funds:  " << fmtMoney(acc.committedTotal()) << "\n";
-  std::cout << " BUCKETS:\n";
+  std::cout << " Total Balance:    " << Color::Cyan << fmtMoney(acc.totalBalance()) << Color::Reset << "\n";
+  std::cout << " Committed Funds:  " << Color::Yellow << fmtMoney(acc.committedTotal()) << Color::Reset << "\n";
+  std::cout << " " << Color::Bold << "BUCKETS:" << Color::Reset << "\n";
   if (acc.buckets().empty()) {
     std::cout << "   (no buckets configured)\n";
   } else {
@@ -250,11 +262,14 @@ void PFMS::runAccountSummary() {
     for (const auto& b: acc.buckets()) {
       std::cout << "   [" << i++ << "] " << std::left << std::setw(15) << b.name() << " " << std::setw(10)
                 << fmtMoney(b.balance()) << " " << std::setw(4)
-                << (std::to_string(static_cast<int>(b.percentage())) + "%") << " " << (b.committed() ? "COMMITTED" : "")
-                << "\n";
+                << (std::to_string(static_cast<int>(b.percentage())) + "%") << " ";
+      if (b.committed()) {
+        std::cout << Color::Yellow << "COMMITTED" << Color::Reset;
+      }
+      std::cout << "\n";
     }
   }
-  std::cout << " Unallocated:      " << fmtMoney(acc.unallocated()) << "\n";
+  std::cout << " " << Color::Dim << "Unallocated:      " << fmtMoney(acc.unallocated()) << Color::Reset << "\n";
   showFooter("Press Enter to return to Main Menu.");
   std::string s;
   std::getline(std::cin, s);
@@ -282,6 +297,10 @@ void PFMS::runBucketMenu() {
       runEditBucket();
     else if (line == "3")
       runDeleteBucket();
+    else if (line == "4")
+      runToggleCommitted();
+    else if (line == "5")
+      return;
     else
       showError("Please enter a number from 1 to 5.");
   }
@@ -367,6 +386,53 @@ void PFMS::runDeleteBucket() {
   else
     showError(message);
 }
+
+void PFMS::runToggleCommitted() {
+  auto& acc = auth_.currentUser()->account();
+  showHeader("TOGGLE COMMITTED");
+  if (acc.buckets().empty()) {
+    showHeader("No buckets configured.");
+    return;
+  }
+  size_t i = 1;
+  for (const auto& b: acc.buckets()) {
+    std::cout << " [" << i++ << "] " << b.name() << " " << (b.committed() ? "[COMMITTED]" : "[not committed]") << "\n";
+  }
+
+  size_t sel;
+  if (!readSizeT("Select bucket number:", sel) || sel < 1 || sel > acc.buckets().size()) {
+    showError("Invalid bucket selection.");
+    return;
+  }
+  if (auto [ok, message] = acc.toggleCommitted(sel - 1); ok) {
+    showInfo(message);
+    showInfo("Updated Safe to Spend: " + fmtMoney(acc.safeToSpend()));
+  } else {
+    showError(message);
+  }
+}
+
+
+// ---------- Deposit / Withdraw / Transfer  ----------
+
+void PFMS::runDeposit() {
+  auto& acc = auth_.currentUser()->account();
+  showHeader("DEPOSIT");
+  double amount;
+  if (!readDouble("Enter deposit amount (e.g., 150.00):", amount)) {
+    showError("Please enter a numeric amount (e.g., 150.00).");
+    return;
+  }
+  auto [ok, message] = acc.deposit(amount);
+  if (!ok) {
+    showError(message);
+    return;
+  }
+  showInfo(message);
+  showInfo("New Total Balance: " + fmtMoney(acc.totalBalance()));
+  showInfo("Safe to Spend:     " + fmtMoney(acc.safeToSpend()));
+}
+
 
 // ---------- Formatting ----------
 

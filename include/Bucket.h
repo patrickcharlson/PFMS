@@ -19,6 +19,9 @@ public:
 
   void setName(const std::string& n) { name_ = n; }
   void setPercentage(double p) { percentage_ = p; }
+  void setCommitted(bool c) { committed_ = c; }
+
+  void adjustBalance(const double delta) { balance_ += delta; }
 
 private:
   std::string name_;

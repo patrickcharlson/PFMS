@@ -1,8 +1,11 @@
+
+#include "Color.h"
+#include "PFMS.h"
 #include <iostream>
 
-#include "../include/PFMS.h"
 
 int main() {
+  Color::enable();
   std::cout << "\n";
   std::cout << "========================================\n";
   std::cout << " Personal Finance & Liquidity Management\n";
