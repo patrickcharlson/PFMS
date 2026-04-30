@@ -4,8 +4,8 @@
 
 #include <string>
 
-#include "../include/AuthService.h"
-#include "../include/Sha256.h"
+#include "AuthService.h"
+#include "Sha256.h"
 
 User::User(std::string username, std::string passwordHash) :
     username_(std::move(username)), passwordHash_(std::move(passwordHash)) {}
