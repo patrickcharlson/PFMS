@@ -27,6 +27,9 @@ public:
 
   // ---- Money operations  ----
   Status deposit(double amount);
+  enum class WithdrawCheck { Ok, ExceedsBalance, ExceedsSafeToSpend };
+  WithdrawCheck checkWithdrawal(double amount) const;
+  Status withdraw(double amount);
 
   const std::vector<Bucket>& buckets() const { return buckets_; }
 

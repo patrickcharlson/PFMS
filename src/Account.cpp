@@ -90,6 +90,62 @@ Status Account::deposit(double amount) {
   return Status::success("Deposited " + fmtMoney(amount) + ".");
 }
 
+Account::WithdrawCheck Account::checkWithdrawal(const double amount) const {
+  if (amount > totalBalance_ + 1e-9)
+    return WithdrawCheck::ExceedsBalance;
+  if (amount > safeToSpend() + 1e-9)
+    return WithdrawCheck::ExceedsSafeToSpend;
+  return WithdrawCheck::Ok;
+}
+
+Status Account::withdraw(double amount) {
+  if (!(amount > 0.0))
+    return Status::failure("Withdraw amount must be positive.");
+  amount = round2(amount);
+  if (amount > totalBalance_ + 1e-9)
+    return Status::failure("Amount exceeds available balance. Please enter a value up to " + fmtMoney(totalBalance_) +
+                           ".");
+  double remaining = amount;
+
+  auto drainFrom = [&](const bool committed) {
+    if (remaining <= 0.0)
+      return;
+    double poolTotal = 0.0;
+    std::vector<size_t> indices;
+    for (size_t i = 0; i < buckets_.size(); ++i) {
+      if (buckets_[i].committed() == committed) {
+        poolTotal += buckets_[i].balance();
+        indices.push_back(i);
+      }
+    }
+    if (poolTotal <= 0.0 || indices.empty())
+      return;
+
+    const double take = std::min(remaining, poolTotal);
+    double drawn = 0.0;
+    for (size_t k = 0; k < indices.size(); ++k) {
+      const size_t i = indices[k];
+      const bool last = k + 1 == indices.size();
+      double share = last ? round2(take - drawn) : round2(take * (buckets_[i].balance() / poolTotal));
+      if (share > buckets_[i].balance())
+        share = buckets_[i].balance();
+      buckets_[i].adjustBalance(-share);
+      drawn = round2(drawn + share);
+    }
+    remaining = round2(remaining - take);
+  };
+
+  const double fromUnalloc = std::min(unallocated_, remaining);
+  unallocated_ = round2(unallocated_ - fromUnalloc);
+  remaining = round2(remaining - fromUnalloc);
+
+  drainFrom(/*committed =*/false);
+  drainFrom(/*committed =*/true);
+
+  totalBalance_ = round2(totalBalance_ - amount);
+  return Status::success("Withdrew " + fmtMoney(amount) + ".");
+}
+
 void Account::distributeDeposit(const double amount) {
   double allocated = 0.0;
   for (auto& b: buckets_) {

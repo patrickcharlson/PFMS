@@ -236,6 +236,8 @@ void PFMS::runMainMenu() {
     runBucketMenu();
   else if (line == "3")
     runDeposit();
+  else if (line == "4")
+    runWithdraw();
   else if (line == "7") {
     auth_.logout();
     showInfo("Logged out. Session cleared.");
@@ -431,6 +433,42 @@ void PFMS::runDeposit() {
   showInfo(message);
   showInfo("New Total Balance: " + fmtMoney(acc.totalBalance()));
   showInfo("Safe to Spend:     " + fmtMoney(acc.safeToSpend()));
+}
+
+void PFMS::runWithdraw() {
+  auto& acc = auth_.currentUser()->account();
+  showHeader("WITHDRAW");
+  double amount;
+  if (!readDouble("Enter withdrawal amount (e.g., 50.00):", amount)) {
+    showError("Please enter a numeric amount (e.g., 50.00).");
+    return;
+  }
+  if (!(amount > 0)) {
+    showError("Withdrawal amount must be positive.");
+    return;
+  }
+
+  const auto check = acc.checkWithdrawal(amount);
+  if (check == Account::WithdrawCheck::ExceedsBalance) {
+    showError("Amount exceeds available balance. Please enter a value up to " + fmtMoney(acc.totalBalance()) + ".");
+    return;
+  }
+  if (check == Account::WithdrawCheck::ExceedsSafeToSpend) {
+    showWarning("Withdrawal of " + fmtMoney(amount) + " exceeds your Safe to Spend (" + fmtMoney(acc.safeToSpend()) +
+                ") and will draw on COMMITTED funds.");
+    if (!confirm("Proceed anyway?")) {
+      showInfo("Withdraw cancelled.");
+      return;
+    }
+  }
+  auto [ok, message] = acc.withdraw(amount);
+  if (!ok) {
+    showError(message);
+    return;
+  }
+  showInfo(message);
+  showInfo("New Total Balance: " + fmtMoney(acc.totalBalance()));
+  showInfo("Safe to Spend: " + fmtMoney(acc.safeToSpend()));
 }
 
 
