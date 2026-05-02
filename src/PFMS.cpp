@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <sstream>
 
 
 static constexpr int LINE_WIDTH = 40;
@@ -236,6 +237,8 @@ void PFMS::runMainMenu() {
     runBucketMenu();
   else if (line == "3")
     runDeposit();
+  else if (line == "4")
+  runWithdraw();
   else if (line == "7") {
     auth_.logout();
     showInfo("Logged out. Session cleared.");
@@ -431,6 +434,82 @@ void PFMS::runDeposit() {
   showInfo(message);
   showInfo("New Total Balance: " + fmtMoney(acc.totalBalance()));
   showInfo("Safe to Spend:     " + fmtMoney(acc.safeToSpend()));
+}
+
+void PFMS::runWithdraw() {
+  auto& acc = auth_.currentUser()->account();
+
+  showHeader("WITHDRAW");
+
+  if (acc.totalBalance() <= 0.0) {
+    showError("No funds are available to withdraw.");
+    return;
+  }
+
+  if (acc.buckets().empty()) {
+    showError("No buckets available. Create a bucket before withdrawing.");
+    return;
+  }
+
+  std::cout << " Available buckets:\n";
+
+  size_t i = 1;
+  for (const auto& b : acc.buckets()) {
+    std::cout << " [" << i++ << "] "
+              << b.name()
+              << " — Balance: " << fmtMoney(b.balance())
+              << (b.committed() ? " — COMMITTED" : "")
+              << "\n";
+  }
+
+  size_t selectedBucket;
+  if (!readSizeT("Select bucket number:", selectedBucket) ||
+      selectedBucket < 1 ||
+      selectedBucket > acc.buckets().size()) {
+    showError("Invalid bucket selection.");
+    return;
+  }
+
+  double amount;
+  if (!readDouble("Withdrawal amount (e.g., 50.00):", amount)) {
+    showError("Please enter a numeric withdrawal amount.");
+    return;
+  }
+
+  if (!(amount > 0.0)) {
+    showError("Withdrawal amount must be positive.");
+    return;
+  }
+
+  if (amount > acc.totalBalance() + 1e-9) {
+    showError("Withdrawal amount cannot exceed total balance.");
+    return;
+  }
+
+  const auto& bucket = acc.buckets()[selectedBucket - 1];
+
+  if (amount > bucket.balance() + 1e-9) {
+    showError("Withdrawal amount cannot exceed the selected bucket balance.");
+    return;
+  }
+
+  if (bucket.committed()) {
+    showWarning("You are withdrawing from a committed bucket: " + bucket.name() +
+                ". This may affect money reserved for important expenses.");
+
+    if (!confirm("Do you want to continue?")) {
+      showInfo("Withdrawal cancelled.");
+      return;
+    }
+  }
+
+  if (auto [ok, message] = acc.withdrawFromBucket(selectedBucket - 1, amount); ok) {
+    showInfo(message);
+    showInfo("New Total Balance: " + fmtMoney(acc.totalBalance()));
+    showInfo("Safe to Spend:     " + fmtMoney(acc.safeToSpend()));
+  } else {
+    showError(message);
+  }
 }
 
 
