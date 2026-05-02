@@ -27,7 +27,7 @@ public:
 
   // ---- Money operations  ----
   Status deposit(double amount);
-
+  Status withdrawFromBucket(size_t index, double amount);
   const std::vector<Bucket>& buckets() const { return buckets_; }
 
 
