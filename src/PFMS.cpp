@@ -448,7 +448,11 @@ void PFMS::runDeposit() {
 void PFMS::runWithdraw() {
   auto& acc = auth_.currentUser()->account();
 
-  showHeader("WITHDRAW");
+  showHeader("WITHDRAW FUNDS");
+
+  std::cout << " Total Balance:    " << fmtMoney(acc.totalBalance()) << "\n";
+  std::cout << " Committed Funds:  " << fmtMoney(acc.committedTotal()) << "\n";
+  std::cout << " Safe to Spend:    " << fmtMoney(acc.safeToSpend()) << "\n\n";
 
   if (acc.totalBalance() <= 0.0) {
     showError("No funds are available to withdraw.");
@@ -461,13 +465,15 @@ void PFMS::runWithdraw() {
   }
 
   std::cout << " Available buckets:\n";
+  std::cout << " Non-committed buckets are included in Safe to Spend.\n";
+  std::cout << " Committed buckets are reserved funds and require confirmation before withdrawal.\n\n";
 
   size_t i = 1;
   for (const auto& b : acc.buckets()) {
     std::cout << " [" << i++ << "] "
               << b.name()
-              << " — Balance: " << fmtMoney(b.balance())
-              << (b.committed() ? " — COMMITTED" : "")
+              << " - Balance: " << fmtMoney(b.balance())
+              << (b.committed() ? " - COMMITTED" : " - SAFE TO SPEND")
               << "\n";
   }
 
@@ -480,18 +486,14 @@ void PFMS::runWithdraw() {
   }
 
   double amount;
-  if (!readDouble("Withdrawal amount (e.g., 50.00):", amount)) {
-    showError("Please enter a numeric withdrawal amount.");
-    return;
-  }
-
-  if (!(amount > 0.0)) {
-    showError("Withdrawal amount must be positive.");
+  if (!readDouble("Withdrawal amount (e.g., 50.00):", amount) || amount <= 0.0) {
+    showError("Withdrawal amount must be a positive number.");
     return;
   }
 
   if (amount > acc.totalBalance() + 1e-9) {
-    showError("Withdrawal amount cannot exceed total balance.");
+    showError("Amount exceeds total balance. Enter a value up to " +
+              fmtMoney(acc.totalBalance()) + ".");
     return;
   }
 
@@ -502,15 +504,24 @@ void PFMS::runWithdraw() {
     return;
   }
 
-  if (bucket.committed()) {
-    showWarning("You are withdrawing from a committed bucket: " + bucket.name() +
-                ". This may affect money reserved for important expenses.");
+  if (!bucket.committed() && amount > acc.safeToSpend() + 1e-9) {
+    showError("Withdrawal amount cannot exceed Safe to Spend.");
+    return;
+  }
 
-    if (!confirm("Do you want to continue?")) {
+  if (bucket.committed()) {
+    showWarning("You are about to withdraw " + fmtMoney(amount) +
+                " from a committed bucket (" + bucket.name() + ").\n"
+                "This money is not part of Safe to Spend and may affect funds "
+                "reserved for important expenses.");
+
+    if (!confirm("Proceed?")) {
       showInfo("Withdrawal cancelled.");
       return;
     }
   }
+
+  double safeBefore = acc.safeToSpend();
 
   if (auto [ok, message] = acc.withdrawFromBucket(selectedBucket - 1, amount); ok) {
     journal_.addTransaction(
@@ -519,8 +530,9 @@ void PFMS::runWithdraw() {
       amount
     );
     showInfo(message);
-    showInfo("New Total Balance: " + fmtMoney(acc.totalBalance()));
-    showInfo("Safe to Spend:     " + fmtMoney(acc.safeToSpend()));
+    showInfo("Previous Safe to Spend: " + fmtMoney(safeBefore));
+    showInfo("New Total Balance:      " + fmtMoney(acc.totalBalance()));
+    showInfo("New Safe to Spend:      " + fmtMoney(acc.safeToSpend()));
   } else {
     showError(message);
   }
