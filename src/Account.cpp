@@ -117,6 +117,27 @@ Status Account::withdrawFromBucket(const size_t index, double amount) {
   return Status::success("Withdrawal completed successfully.");
 }
 
+Status Account::transferFromUnallocated(const size_t index, double amount) {
+  if (index >= buckets_.size()) {
+    return Status::failure("Invalid bucket selection.");
+  }
+
+  if (!(amount > 0.0)) {
+    return Status::failure("Transfer amount must be positive.");
+  }
+
+  amount = round2(amount);
+
+  if (amount > unallocated_ + 1e-9) {
+    return Status::failure("Transfer amount cannot exceed unallocated balance.");
+  }
+
+  unallocated_ = round2(unallocated_ - amount);
+  buckets_[index].adjustBalance(amount);
+
+  return Status::success("Manual transfer completed successfully.");
+}
+
 void Account::distributeDeposit(const double amount) {
   double allocated = 0.0;
   for (auto& b: buckets_) {

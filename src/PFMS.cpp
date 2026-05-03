@@ -238,7 +238,11 @@ void PFMS::runMainMenu() {
   else if (line == "3")
     runDeposit();
   else if (line == "4")
-  runWithdraw();
+    runWithdraw();
+  else if (line == "5")
+    runManualTransfer();
+  else if (line == "6")
+    runTransactionJournal();
   else if (line == "7") {
     auth_.logout();
     showInfo("Logged out. Session cleared.");
@@ -431,6 +435,11 @@ void PFMS::runDeposit() {
     showError(message);
     return;
   }
+  journal_.addTransaction(
+    "Deposit",
+    "Added funds to unallocated balance",
+    amount
+  );
   showInfo(message);
   showInfo("New Total Balance: " + fmtMoney(acc.totalBalance()));
   showInfo("Safe to Spend:     " + fmtMoney(acc.safeToSpend()));
@@ -504,6 +513,11 @@ void PFMS::runWithdraw() {
   }
 
   if (auto [ok, message] = acc.withdrawFromBucket(selectedBucket - 1, amount); ok) {
+    journal_.addTransaction(
+      "Withdrawal",
+      "Withdrawn from " + acc.buckets()[selectedBucket - 1].name(),
+      amount
+    );
     showInfo(message);
     showInfo("New Total Balance: " + fmtMoney(acc.totalBalance()));
     showInfo("Safe to Spend:     " + fmtMoney(acc.safeToSpend()));
@@ -512,6 +526,86 @@ void PFMS::runWithdraw() {
   }
 }
 
+void PFMS::runManualTransfer() {
+  auto& acc = auth_.currentUser()->account();
+
+  showHeader("MANUAL TRANSFER");
+
+  if (acc.unallocated() <= 0.0) {
+    showError("No unallocated funds available.");
+    return;
+  }
+
+  if (acc.buckets().empty()) {
+    showError("No buckets available. Create a bucket first.");
+    return;
+  }
+
+  std::cout << " Unallocated Balance: " << fmtMoney(acc.unallocated()) << "\n";
+
+  size_t i = 1;
+  for (const auto& b : acc.buckets()) {
+    std::cout << " [" << i++ << "] " << b.name()
+              << " — Balance: " << fmtMoney(b.balance()) << "\n";
+  }
+
+  std::cout << " [0] Exit\n";
+
+  size_t selectedBucket;
+  if (!readSizeT("Select bucket number:", selectedBucket)) {
+    showError("Invalid input.");
+    return;
+  }
+
+  if (selectedBucket == 0) {
+    showInfo("Returning to main menu...");
+    return;
+  }
+
+  if (selectedBucket < 1 || selectedBucket > acc.buckets().size()) {
+    showError("Invalid bucket selection.");
+    return;
+  }
+
+  double amount;
+  if (!readDouble("Enter transfer amount:", amount)) {
+    showError("Please enter a numeric amount.");
+    return;
+  }
+
+  if (amount <= 0.0) {
+    showError("Transfer amount must be positive.");
+    return;
+  }
+
+  if (amount > acc.unallocated()) {
+    showError("Transfer amount cannot exceed unallocated balance.");
+    return;
+  }
+
+  if (auto [ok, message] = acc.transferFromUnallocated(selectedBucket - 1, amount); ok) {
+    journal_.addTransaction(
+        "Manual Transfer",
+        "Transferred to " + acc.buckets()[selectedBucket - 1].name(),
+        amount
+    );
+
+    showInfo(message);
+    showInfo("New Unallocated Balance: " + fmtMoney(acc.unallocated()));
+  } else {
+    showError(message);
+  }
+}
+
+void PFMS::runTransactionJournal() {
+  showHeader("TRANSACTION JOURNAL");
+
+  journal_.displayTransactions();
+
+  showFooter("Press Enter to return to Main Menu.");
+  std::string s;
+  std::getline(std::cin, s);
+}
 
 // ---------- Formatting ----------
 

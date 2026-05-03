@@ -8,6 +8,7 @@
 #include <string>
 
 #include "AuthService.h"
+#include "Transaction.h"
 
 class PFMS {
 public:
@@ -17,7 +18,7 @@ public:
 private:
   AuthService auth_;
   bool quit_{false};
-
+  TransactionJournal journal_;
 
   // ---- Screen builders (layout: title, body, footer) ----
 
@@ -54,6 +55,8 @@ private:
   void runToggleCommitted();
   void runDeposit();
   void runWithdraw();
+  void runManualTransfer();
+  void runTransactionJournal();
 
 
   // ---- Formatting ----
