@@ -146,6 +146,20 @@ Status Account::withdraw(double amount) {
   return Status::success("Withdrew " + fmtMoney(amount) + ".");
 }
 
+Status Account::transferFromUnallocated(const size_t bucketIndex, double amount) {
+  if (bucketIndex >= buckets_.size())
+    return Status::failure("Invalid bucket selection.");
+  if (!(amount > 0.0))
+    return Status::failure("Transfer amount must be positive.");
+  amount = round2(amount);
+  if (amount > unallocated_ + 1e-9)
+    return Status::failure("Unallocated pool only has " + fmtMoney(unallocated_) + ".");
+
+  unallocated_ = round2(unallocated_ - amount);
+  buckets_[bucketIndex].adjustBalance(amount);
+  return Status::success("Transferred " + fmtMoney(amount) + " to '" + buckets_[bucketIndex].name() + "'.");
+}
+
 void Account::distributeDeposit(const double amount) {
   double allocated = 0.0;
   for (auto& b: buckets_) {
@@ -172,4 +186,8 @@ double Account::allocatedPercentageTotal() const {
 
 // --------- Journal & session ---------
 
-void Account::clearSession() { buckets_.clear(); }
+void Account::clearSession() {
+  buckets_.clear();
+  totalBalance_ = 0.0;
+  unallocated_ = 0.0;
+}

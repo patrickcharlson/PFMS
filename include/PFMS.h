@@ -54,6 +54,7 @@ private:
   void runToggleCommitted();
   void runDeposit();
   void runWithdraw();
+  void runTransfer();
 
 
   // ---- Formatting ----

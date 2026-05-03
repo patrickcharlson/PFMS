@@ -239,6 +239,8 @@ void PFMS::runMainMenu() {
     runDeposit();
   else if (line == "4")
     runWithdraw();
+  else if (line == "5")
+    runTransfer();
   else if (line == "7") {
     auth_.logout();
     showInfo("Logged out. Session cleared.");
@@ -440,6 +442,15 @@ void PFMS::runWithdraw() {
   auto& acc = auth_.currentUser()->account();
   showHeader("WITHDRAW");
   double amount;
+
+  if (acc.totalBalance() <= 0.0) {
+    showError("No funds available to withdraw. Please make a deposit first.");
+    showFooter("Press Enter to return to Main Menu.");
+    std::string s;
+    std::getline(std::cin, s);
+    return;
+  }
+
   if (!readDouble("Enter withdrawal amount (e.g., 50.00):", amount)) {
     showError("Please enter a numeric amount (e.g., 50.00).");
     return;
@@ -470,6 +481,34 @@ void PFMS::runWithdraw() {
   showInfo(message);
   showInfo("New Total Balance: " + fmtMoney(acc.totalBalance()));
   showInfo("Safe to Spend: " + fmtMoney(acc.safeToSpend()));
+}
+
+void PFMS::runTransfer() {
+  auto& acc = auth_.currentUser()->account();
+  showHeader("TRANSFER FROM UNALLOCATED");
+  if (acc.buckets().empty()) {
+    showError("No buckets to transfer to.");
+    return;
+  }
+  std::cout << " Unallocated pool: " << fmtMoney(acc.unallocated()) << "\n";
+  size_t i = 1;
+  for (const auto& b: acc.buckets())
+    std::cout << " [" << i++ << "] " << b.name() << " " << fmtMoney(b.balance()) << "\n";
+
+  size_t sel;
+  if (!readSizeT("Select destination bucket number:", sel) || sel < 1 || sel > acc.buckets().size()) {
+    showError("Invalid bucket selection.");
+    return;
+  }
+  double amount;
+  if (!readDouble("Enter transfer amount (e.g., 25.00):", amount)) {
+    showError("Invalid bucket selection.");
+    return;
+  }
+  if (auto [ok, message] = acc.transferFromUnallocated(sel - 1, amount); ok)
+    showInfo(message);
+  else
+    showError(message);
 }
 
 
