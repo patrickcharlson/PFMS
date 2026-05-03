@@ -1,0 +1,32 @@
+//
+// Created by Patrick Charlson on 3/5/2026.
+//
+
+#ifndef PFMS_TRANSACTION_H
+#define PFMS_TRANSACTION_H
+
+#include <ctime>
+#include <string>
+
+enum class TxType { Deposit, Withdrawal, Transfer };
+
+class Transaction {
+public:
+  Transaction(TxType type, double amount, std::string description);
+
+  TxType type() const { return type_; }
+  double amount() const { return amount_; }
+  const std::string& description() const { return description_; }
+  std::time_t timestamp() const { return timestamp_; }
+
+  std::string typeLabel() const;
+  std::string formattedTimestamp() const;
+
+private:
+  TxType type_;
+  double amount_;
+  std::string description_;
+  std::time_t timestamp_;
+};
+
+#endif // PFMS_TRANSACTION_H

@@ -55,6 +55,7 @@ private:
   void runDeposit();
   void runWithdraw();
   void runTransfer();
+  void runJournal();
 
 
   // ---- Formatting ----

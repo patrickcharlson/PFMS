@@ -87,6 +87,7 @@ Status Account::deposit(double amount) {
   amount = round2(amount);
   distributeDeposit(amount);
   totalBalance_ = round2(totalBalance_ + amount);
+  log(TxType::Deposit, amount, "Deposit (Smart-Distribute)");
   return Status::success("Deposited " + fmtMoney(amount) + ".");
 }
 
@@ -143,6 +144,7 @@ Status Account::withdraw(double amount) {
   drainFrom(/*committed =*/true);
 
   totalBalance_ = round2(totalBalance_ - amount);
+  log(TxType::Withdrawal, amount, "Withdrawal");
   return Status::success("Withdrew " + fmtMoney(amount) + ".");
 }
 
@@ -157,6 +159,7 @@ Status Account::transferFromUnallocated(const size_t bucketIndex, double amount)
 
   unallocated_ = round2(unallocated_ - amount);
   buckets_[bucketIndex].adjustBalance(amount);
+  log(TxType::Transfer, amount, "Transfer to '" + buckets_[bucketIndex].name() + "'");
   return Status::success("Transferred " + fmtMoney(amount) + " to '" + buckets_[bucketIndex].name() + "'.");
 }
 
@@ -190,4 +193,8 @@ void Account::clearSession() {
   buckets_.clear();
   totalBalance_ = 0.0;
   unallocated_ = 0.0;
+}
+
+void Account::log(TxType type, double amount, const std::string& description) {
+  journal_.emplace_back(type, amount, description);
 }

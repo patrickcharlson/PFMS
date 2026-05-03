@@ -241,6 +241,8 @@ void PFMS::runMainMenu() {
     runWithdraw();
   else if (line == "5")
     runTransfer();
+  else if (line == "6")
+    runJournal();
   else if (line == "7") {
     auth_.logout();
     showInfo("Logged out. Session cleared.");
@@ -509,6 +511,22 @@ void PFMS::runTransfer() {
     showInfo(message);
   else
     showError(message);
+}
+
+void PFMS::runJournal() {
+  const auto& acc = auth_.currentUser()->account();
+  showHeader("TRANSACTION JOURNAL");
+  if (acc.journal().empty()) {
+    std::cout << " (no transactions this session)\n";
+  } else {
+    for (const auto& tx: acc.journal()) {
+      std::cout << " " << tx.formattedTimestamp() << "  " << std::left << std::setw(11) << tx.typeLabel() << " "
+                << std::setw(11) << fmtMoney(tx.amount()) << " " << tx.description() << "\n";
+    }
+  }
+  showFooter("Press Enter to return to Main Menu.");
+  std::string s;
+  std::getline(std::cin, s);
 }
 
 

@@ -6,6 +6,8 @@
 #define PFMS_ACCOUNT_H
 
 #include "Bucket.h"
+#include "Transaction.h"
+
 #include <string>
 #include <vector>
 
@@ -44,6 +46,9 @@ public:
   double allocatedPercentageTotal() const;
 
 
+  // ---- Journal ----
+  const std::vector<Transaction>& journal() const { return journal_; }
+
   // ---- Session lifecycle ----
 
   // Wipes all in-memory state. Called on logout.
@@ -51,10 +56,12 @@ public:
 
 private:
   std::vector<Bucket> buckets_;
+  std::vector<Transaction> journal_;
   double totalBalance_{0.0};
   double unallocated_{0.0};
 
   void distributeDeposit(double amount);
+  void log(TxType type, double amount, const std::string& description);
 };
 
 
