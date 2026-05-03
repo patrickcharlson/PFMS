@@ -2,8 +2,8 @@
 // Created by Patrick Charlson on 25/4/2026.
 //
 
-#include "../include/Sha256.h"
-
+#include "Sha256.h"
+#include <cstdint>
 #include <iomanip>
 #include <sstream>
 #include <string>

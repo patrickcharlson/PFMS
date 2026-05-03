@@ -50,6 +50,10 @@ private:
   void runBucketMenu();
   void runCreateBucket();
   void runEditBucket();
+  void runDeleteBucket();
+  void runToggleCommitted();
+  void runDeposit();
+  void runWithdraw();
 
 
   // ---- Formatting ----

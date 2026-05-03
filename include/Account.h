@@ -25,6 +25,9 @@ public:
   Status deleteBucket(size_t index);
   Status toggleCommitted(size_t index);
 
+  // ---- Money operations  ----
+  Status deposit(double amount);
+  Status withdrawFromBucket(size_t index, double amount);
   const std::vector<Bucket>& buckets() const { return buckets_; }
 
 
@@ -33,6 +36,7 @@ public:
   double totalBalance() const { return totalBalance_; }
   double committedTotal() const;
   double safeToSpend() const;
+  double unallocated() const { return unallocated_; }
   double allocatedPercentageTotal() const;
 
 
@@ -44,6 +48,9 @@ public:
 private:
   std::vector<Bucket> buckets_;
   double totalBalance_{0.0};
+  double unallocated_{0.0};
+
+  void distributeDeposit(double amount);
 };
 
 
