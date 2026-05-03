@@ -9,31 +9,30 @@
 #include <sstream>
 #include <utility>
 
-Transaction::Transaction(std::string type, std::string details, double amount)
-    : type_(std::move(type)), details_(std::move(details)), amount_(amount) {}
 
-std::string Transaction::toString() const {
-  std::ostringstream out;
-  out << type_ << " | " << details_ << " | $"
-      << std::fixed << std::setprecision(2) << amount_;
-  return out.str();
+Transaction::Transaction(TxType type, double amount, std::string description) :
+    type_(type), amount_(amount), description_(std::move(description)), timestamp_(std::time(nullptr)) {}
+
+std::string Transaction::typeLabel() const {
+  switch (type_) {
+    case TxType::Deposit:
+      return "DEPOSIT";
+    case TxType::Withdrawal:
+      return "WITHDRAWAL";
+    case TxType::Transfer:
+      return "TRANSFER";
+  }
+  return "UNKNOWN";
 }
 
-void TransactionJournal::addTransaction(const std::string& type,
-                                        const std::string& details,
-                                        double amount) {
-  transactions_.emplace_back(type, details, amount);
-}
-
-void TransactionJournal::displayTransactions() const {
-  if (transactions_.empty()) {
-    std::cout << "No transactions recorded yet.\n";
-    return;
-  }
-
-  std::cout << "\n===== Transaction Journal =====\n";
-
-  for (size_t i = 0; i < transactions_.size(); ++i) {
-    std::cout << i + 1 << ". " << transactions_[i].toString() << "\n";
-  }
+std::string Transaction::formattedTimestamp() const {
+  std::tm tmBuf{};
+#if defined(_WIN32)
+  localtime_s(&tmBuf, &timestamp_);
+#else
+  localtime_r(&timestamp_, &tmBuf);
+#endif
+  std::ostringstream oss;
+  oss << std::put_time(&tmBuf, "%Y-%m-%d %H:%M:%S");
+  return oss.str();
 }

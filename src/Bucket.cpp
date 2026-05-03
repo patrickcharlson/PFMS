@@ -8,5 +8,5 @@
 
 #include <string>
 
-Bucket::Bucket(std::string name, double percentage, bool committed) :
+Bucket::Bucket(std::string name, const double percentage, const bool committed) :
     name_(std::move(name)), percentage_(percentage), committed_(committed) {}

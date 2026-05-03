@@ -8,8 +8,8 @@
 
 #include <iomanip>
 #include <iostream>
-#include <string>
 #include <sstream>
+#include <string>
 
 
 static constexpr int LINE_WIDTH = 40;
@@ -240,9 +240,9 @@ void PFMS::runMainMenu() {
   else if (line == "4")
     runWithdraw();
   else if (line == "5")
-    runManualTransfer();
+    runTransfer();
   else if (line == "6")
-    runTransactionJournal();
+    runJournal();
   else if (line == "7") {
     auth_.logout();
     showInfo("Logged out. Session cleared.");
@@ -435,11 +435,6 @@ void PFMS::runDeposit() {
     showError(message);
     return;
   }
-  journal_.addTransaction(
-    "Deposit",
-    "Added funds to unallocated balance",
-    amount
-  );
   showInfo(message);
   showInfo("New Total Balance: " + fmtMoney(acc.totalBalance()));
   showInfo("Safe to Spend:     " + fmtMoney(acc.safeToSpend()));
@@ -447,177 +442,93 @@ void PFMS::runDeposit() {
 
 void PFMS::runWithdraw() {
   auto& acc = auth_.currentUser()->account();
-
-  showHeader("WITHDRAW FUNDS");
-
-  std::cout << " Total Balance:    " << fmtMoney(acc.totalBalance()) << "\n";
-  std::cout << " Committed Funds:  " << fmtMoney(acc.committedTotal()) << "\n";
-  std::cout << " Safe to Spend:    " << fmtMoney(acc.safeToSpend()) << "\n\n";
+  showHeader("WITHDRAW");
+  double amount;
 
   if (acc.totalBalance() <= 0.0) {
-    showError("No funds are available to withdraw.");
+    showError("No funds available to withdraw. Please make a deposit first.");
+    showFooter("Press Enter to return to Main Menu.");
+    std::string s;
+    std::getline(std::cin, s);
     return;
   }
 
-  if (acc.buckets().empty()) {
-    showError("No buckets available. Create a bucket before withdrawing.");
+  if (!readDouble("Enter withdrawal amount (e.g., 50.00):", amount)) {
+    showError("Please enter a numeric amount (e.g., 50.00).");
+    return;
+  }
+  if (!(amount > 0)) {
+    showError("Withdrawal amount must be positive.");
     return;
   }
 
-  std::cout << " Available buckets:\n";
-  std::cout << " Non-committed buckets are included in Safe to Spend.\n";
-  std::cout << " Committed buckets are reserved funds and require confirmation before withdrawal.\n\n";
-
-  size_t i = 1;
-  for (const auto& b : acc.buckets()) {
-    std::cout << " [" << i++ << "] "
-              << b.name()
-              << " - Balance: " << fmtMoney(b.balance())
-              << (b.committed() ? " - COMMITTED" : " - SAFE TO SPEND")
-              << "\n";
-  }
-
-  size_t selectedBucket;
-  if (!readSizeT("Select bucket number:", selectedBucket) ||
-      selectedBucket < 1 ||
-      selectedBucket > acc.buckets().size()) {
-    showError("Invalid bucket selection.");
+  const auto check = acc.checkWithdrawal(amount);
+  if (check == Account::WithdrawCheck::ExceedsBalance) {
+    showError("Amount exceeds available balance. Please enter a value up to " + fmtMoney(acc.totalBalance()) + ".");
     return;
   }
-
-  double amount;
-  if (!readDouble("Withdrawal amount (e.g., 50.00):", amount) || amount <= 0.0) {
-    showError("Withdrawal amount must be a positive number.");
-    return;
-  }
-
-  if (amount > acc.totalBalance() + 1e-9) {
-    showError("Amount exceeds total balance. Enter a value up to " +
-              fmtMoney(acc.totalBalance()) + ".");
-    return;
-  }
-
-  const auto& bucket = acc.buckets()[selectedBucket - 1];
-
-  if (amount > bucket.balance() + 1e-9) {
-    showError("Withdrawal amount cannot exceed the selected bucket balance.");
-    return;
-  }
-
-  if (!bucket.committed() && amount > acc.safeToSpend() + 1e-9) {
-    showError("Withdrawal amount cannot exceed Safe to Spend.");
-    return;
-  }
-
-  if (bucket.committed()) {
-    showWarning("You are about to withdraw " + fmtMoney(amount) +
-                " from a committed bucket (" + bucket.name() + ").\n"
-                "This money is not part of Safe to Spend and may affect funds "
-                "reserved for important expenses.");
-
-    if (!confirm("Proceed?")) {
-      showInfo("Withdrawal cancelled.");
+  if (check == Account::WithdrawCheck::ExceedsSafeToSpend) {
+    showWarning("Withdrawal of " + fmtMoney(amount) + " exceeds your Safe to Spend (" + fmtMoney(acc.safeToSpend()) +
+                ") and will draw on COMMITTED funds.");
+    if (!confirm("Proceed anyway?")) {
+      showInfo("Withdraw cancelled.");
       return;
     }
   }
-
-  double safeBefore = acc.safeToSpend();
-
-  if (auto [ok, message] = acc.withdrawFromBucket(selectedBucket - 1, amount); ok) {
-    journal_.addTransaction(
-      "Withdrawal",
-      "Withdrawn from " + acc.buckets()[selectedBucket - 1].name(),
-      amount
-    );
-    showInfo(message);
-    showInfo("Previous Safe to Spend: " + fmtMoney(safeBefore));
-    showInfo("New Total Balance:      " + fmtMoney(acc.totalBalance()));
-    showInfo("New Safe to Spend:      " + fmtMoney(acc.safeToSpend()));
-  } else {
+  auto [ok, message] = acc.withdraw(amount);
+  if (!ok) {
     showError(message);
+    return;
   }
+  showInfo(message);
+  showInfo("New Total Balance: " + fmtMoney(acc.totalBalance()));
+  showInfo("Safe to Spend: " + fmtMoney(acc.safeToSpend()));
 }
 
-void PFMS::runManualTransfer() {
+void PFMS::runTransfer() {
   auto& acc = auth_.currentUser()->account();
-
-  showHeader("MANUAL TRANSFER");
-
-  if (acc.unallocated() <= 0.0) {
-    showError("No unallocated funds available.");
-    return;
-  }
-
+  showHeader("TRANSFER FROM UNALLOCATED");
   if (acc.buckets().empty()) {
-    showError("No buckets available. Create a bucket first.");
+    showError("No buckets to transfer to.");
     return;
   }
-
-  std::cout << " Unallocated Balance: " << fmtMoney(acc.unallocated()) << "\n";
-
+  std::cout << " Unallocated pool: " << fmtMoney(acc.unallocated()) << "\n";
   size_t i = 1;
-  for (const auto& b : acc.buckets()) {
-    std::cout << " [" << i++ << "] " << b.name()
-              << " — Balance: " << fmtMoney(b.balance()) << "\n";
-  }
+  for (const auto& b: acc.buckets())
+    std::cout << " [" << i++ << "] " << b.name() << " " << fmtMoney(b.balance()) << "\n";
 
-  std::cout << " [0] Exit\n";
-
-  size_t selectedBucket;
-  if (!readSizeT("Select bucket number:", selectedBucket)) {
-    showError("Invalid input.");
-    return;
-  }
-
-  if (selectedBucket == 0) {
-    showInfo("Returning to main menu...");
-    return;
-  }
-
-  if (selectedBucket < 1 || selectedBucket > acc.buckets().size()) {
+  size_t sel;
+  if (!readSizeT("Select destination bucket number:", sel) || sel < 1 || sel > acc.buckets().size()) {
     showError("Invalid bucket selection.");
     return;
   }
-
   double amount;
-  if (!readDouble("Enter transfer amount:", amount)) {
-    showError("Please enter a numeric amount.");
+  if (!readDouble("Enter transfer amount (e.g., 25.00):", amount)) {
+    showError("Invalid bucket selection.");
     return;
   }
-
-  if (amount <= 0.0) {
-    showError("Transfer amount must be positive.");
-    return;
-  }
-
-  if (amount > acc.unallocated()) {
-    showError("Transfer amount cannot exceed unallocated balance.");
-    return;
-  }
-
-  if (auto [ok, message] = acc.transferFromUnallocated(selectedBucket - 1, amount); ok) {
-    journal_.addTransaction(
-        "Manual Transfer",
-        "Transferred to " + acc.buckets()[selectedBucket - 1].name(),
-        amount
-    );
-
+  if (auto [ok, message] = acc.transferFromUnallocated(sel - 1, amount); ok)
     showInfo(message);
-    showInfo("New Unallocated Balance: " + fmtMoney(acc.unallocated()));
-  } else {
+  else
     showError(message);
-  }
 }
 
-void PFMS::runTransactionJournal() {
+void PFMS::runJournal() {
+  const auto& acc = auth_.currentUser()->account();
   showHeader("TRANSACTION JOURNAL");
-
-  journal_.displayTransactions();
-
+  if (acc.journal().empty()) {
+    std::cout << " (no transactions this session)\n";
+  } else {
+    for (const auto& tx: acc.journal()) {
+      std::cout << " " << tx.formattedTimestamp() << "  " << std::left << std::setw(11) << tx.typeLabel() << " "
+                << std::setw(11) << fmtMoney(tx.amount()) << " " << tx.description() << "\n";
+    }
+  }
   showFooter("Press Enter to return to Main Menu.");
   std::string s;
   std::getline(std::cin, s);
 }
+
 
 // ---------- Formatting ----------
 

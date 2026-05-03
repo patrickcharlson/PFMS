@@ -6,26 +6,27 @@
 #define PFMS_TRANSACTION_H
 
 #include <string>
-#include <vector>
+#include <ctime>
+
+enum class TxType { Deposit, Withdrawal, Transfer };
 
 class Transaction {
 public:
-  Transaction(std::string type, std::string details, double amount);
-  std::string toString() const;
+  Transaction(TxType type, double amount, std::string description);
+
+  TxType type() const { return type_; }
+  double amount() const { return amount_; }
+  const std::string& description() const { return description_; }
+  std::time_t timestamp() const { return timestamp_; }
+
+  std::string typeLabel() const;
+  std::string formattedTimestamp() const;
 
 private:
-  std::string type_;
-  std::string details_;
+  TxType type_;
   double amount_;
-};
-
-class TransactionJournal {
-public:
-  void addTransaction(const std::string& type, const std::string& details, double amount);
-  void displayTransactions() const;
-
-private:
-  std::vector<Transaction> transactions_;
+  std::string description_;
+  std::time_t timestamp_;
 };
 
 #endif // PFMS_TRANSACTION_H
