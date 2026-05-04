@@ -65,10 +65,10 @@ int main() {
   }
   
   // =========================================================================
-  // Account :: withdrawFromBucket
+  // Account :: withdraw
   // =========================================================================
 
-  section("Account :: withdrawFromBucket valid withdrawal");
+  section("Account :: withdraw valid withdrawal");
   {
     Account a;
 
@@ -78,85 +78,105 @@ int main() {
     auto [depositOk, depositMsg] = a.deposit(100.00);
     CHECK(depositOk, "deposit 100.00 succeeds");
 
-    auto [withdrawOk, withdrawMsg] = a.withdrawFromBucket(0, 50.00);
+    auto [withdrawOk, withdrawMsg] = a.withdraw(50.00);
     CHECK(withdrawOk, "withdraw 50.00 succeeds");
 
     CHECK(approx(a.totalBalance(), 50.00), "total balance reduced to 50.00");
     CHECK(approx(a.buckets()[0].balance(), 50.00), "Food bucket balance reduced to 50.00");
   }
 
-  section("Account :: withdrawFromBucket rejects amount greater than total balance");
-  {
+section("Account :: withdraw rejects amount greater than total balance");
+ {
     Account a;
 
     a.createBucket("Food", 100.0, false);
     a.deposit(100.00);
 
-    auto [ok, message] = a.withdrawFromBucket(0, 150.00);
+    auto [ok, message] = a.withdraw(150.00);
 
     CHECK(!ok, "withdrawal greater than total balance rejected");
     CHECK(approx(a.totalBalance(), 100.00), "total balance remains 100.00");
     CHECK(approx(a.buckets()[0].balance(), 100.00), "bucket balance remains 100.00");
   }
 
-  section("Account :: withdrawFromBucket rejects amount greater than selected bucket balance");
-  {
-    Account a;
+ section("Account :: withdraw uses unallocated funds before bucket funds");
+{
+  Account a;
+  a.createBucket("Food", 50.0, false);
+  a.deposit(100.00);
 
-    a.createBucket("Food", 50.0, false);
-    a.createBucket("Rent", 50.0, true);
-    a.deposit(100.00);
+  // 50.00 goes to Food and 50.00 remains unallocated.
+  auto [ok, message] = a.withdraw(30.00);
 
-    auto [ok, message] = a.withdrawFromBucket(0, 80.00);
+  CHECK(ok, "withdrawal from unallocated funds succeeds");
+  CHECK(approx(a.totalBalance(), 70.00), "total balance reduced to 70.00");
+  CHECK(approx(a.unallocated(), 20.00), "unallocated funds reduced first");
+  CHECK(approx(a.buckets()[0].balance(), 50.00), "Food bucket remains unchanged");
+}
 
-    CHECK(!ok, "withdrawal greater than selected bucket balance rejected");
-    CHECK(approx(a.totalBalance(), 100.00), "total balance remains unchanged");
-    CHECK(approx(a.buckets()[0].balance(), 50.00), "Food bucket balance remains unchanged");
-  }
+  section("Account :: withdraw uses non-committed funds before committed funds");
+{
+  Account a;
 
-  section("Account :: withdrawFromBucket rejects negative amount");
+  a.createBucket("Food", 50.0, false);
+  a.createBucket("Rent", 50.0, true);
+  a.deposit(100.00);
+
+  auto [ok, message] = a.withdraw(40.00);
+
+  CHECK(ok, "withdrawal within Safe to Spend succeeds");
+  CHECK(approx(a.totalBalance(), 60.00), "total balance reduced to 60.00");
+  CHECK(approx(a.buckets()[0].balance(), 10.00), "non-committed Food bucket reduced first");
+  CHECK(approx(a.buckets()[1].balance(), 50.00), "committed Rent bucket remains unchanged");
+  CHECK(approx(a.safeToSpend(), 10.00), "safe to spend updated to 10.00");
+}
+
+  section("Account :: withdraw rejects negative amount");
   {
     Account a;
 
     a.createBucket("Food", 100.0, false);
     a.deposit(100.00);
 
-    auto [ok, message] = a.withdrawFromBucket(0, -50.00);
+    auto [ok, message] = a.withdraw(-50.00);
 
     CHECK(!ok, "negative withdrawal rejected");
     CHECK(approx(a.totalBalance(), 100.00), "total balance remains unchanged after negative withdrawal");
     CHECK(approx(a.buckets()[0].balance(), 100.00), "bucket balance remains unchanged after negative withdrawal");
   }
 
-  section("Account :: withdrawFromBucket rejects zero amount");
+  section("Account :: withdraw rejects zero amount");
   {
     Account a;
 
     a.createBucket("Food", 100.0, false);
     a.deposit(100.00);
 
-    auto [ok, message] = a.withdrawFromBucket(0, 0.00);
+    auto [ok, message] = a.withdraw(0.00);
 
     CHECK(!ok, "zero withdrawal rejected");
     CHECK(approx(a.totalBalance(), 100.00), "total balance remains unchanged after zero withdrawal");
     CHECK(approx(a.buckets()[0].balance(), 100.00), "bucket balance remains unchanged after zero withdrawal");
   }
 
-  section("Account :: withdrawFromBucket rejects invalid bucket index");
-  {
-    Account a;
+  section("Account :: withdraw can use committed funds after confirmation handled by UI");
+{
+  Account a;
 
-    a.createBucket("Food", 100.0, false);
-    a.deposit(100.00);
+  a.createBucket("Food", 50.0, false);
+  a.createBucket("Rent", 50.0, true);
+  a.deposit(100.00);
 
-    auto [ok, message] = a.withdrawFromBucket(5, 50.00);
+  auto [ok, message] = a.withdraw(80.00);
 
-    CHECK(!ok, "invalid bucket index rejected");
-    CHECK(approx(a.totalBalance(), 100.00), "total balance remains unchanged after invalid bucket selection");
-    CHECK(approx(a.buckets()[0].balance(), 100.00), "bucket balance remains unchanged after invalid bucket selection");
-  }
+  CHECK(ok, "withdrawal greater than Safe to Spend succeeds after UI confirmation");
+  CHECK(approx(a.totalBalance(), 20.00), "total balance reduced to 20.00");
+  CHECK(approx(a.buckets()[0].balance(), 0.00), "non-committed Food bucket used first");
+  CHECK(approx(a.buckets()[1].balance(), 20.00), "committed Rent bucket reduced after non-committed funds");
+  CHECK(approx(a.safeToSpend(), 0.00), "safe to spend is 0.00 after non-committed funds are used");
+}
 
-  section("Account :: withdrawFromBucket works after committed bucket confirmation");
+  section("Account :: withdraw works after committed bucket confirmation");
   {
     Account a;
 
@@ -165,7 +185,7 @@ int main() {
 
     CHECK(a.buckets()[0].committed() == true, "Rent bucket is committed");
 
-    auto [ok, message] = a.withdrawFromBucket(0, 50.00);
+    auto [ok, message] = a.withdraw(50.00);
 
     CHECK(ok, "withdrawal from committed bucket succeeds after confirmation logic");
     CHECK(approx(a.totalBalance(), 150.00), "total balance reduced after committed bucket withdrawal");
