@@ -445,6 +445,10 @@ void PFMS::runWithdraw() {
   showHeader("WITHDRAW");
   double amount;
 
+  std::cout << " Total Balance:    " << fmtMoney(acc.totalBalance()) << "\n";
+  std::cout << " Committed Funds:  " << fmtMoney(acc.committedTotal()) << "\n";
+  std::cout << " Safe to Spend:    " << fmtMoney(acc.safeToSpend()) << "\n\n";
+
   if (acc.totalBalance() <= 0.0) {
     showError("No funds available to withdraw. Please make a deposit first.");
     showFooter("Press Enter to return to Main Menu.");
