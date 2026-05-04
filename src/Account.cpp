@@ -4,6 +4,7 @@
 
 #include "Account.h"
 
+#include <algorithm>
 #include <cmath>
 #include <iomanip>
 #include <sstream>
@@ -90,10 +91,7 @@ Status Account::deposit(double amount) {
   return Status::success("Deposited " + fmtMoney(amount) + ".");
 }
 
-Status Account::withdrawFromBucket(const size_t index, double amount) {
-  if (index >= buckets_.size())
-    return Status::failure("Invalid bucket selection.");
-
+Status Account::withdraw(double amount) {
   if (!(amount > 0.0))
     return Status::failure("Withdrawal amount must be positive.");
 
@@ -102,17 +100,54 @@ Status Account::withdrawFromBucket(const size_t index, double amount) {
   if (amount > totalBalance_ + 1e-9)
     return Status::failure("Withdrawal amount cannot exceed total balance.");
 
-  if (amount > buckets_[index].balance() + 1e-9)
-    return Status::failure("Withdrawal amount cannot exceed the selected bucket balance.");
+  double availableFunds = unallocated_;
+  for (const auto& bucket : buckets_) {
+    availableFunds += bucket.balance();
+  }
 
-  buckets_[index].adjustBalance(-amount);
+  if (amount > round2(availableFunds) + 1e-9)
+    return Status::failure("Withdrawal amount cannot exceed available funds.");
+
+  double remaining = amount;
+
+  // 1. Withdraw from unallocated money first.
+  if (unallocated_ > 0.0 && remaining > 0.005) {
+    double deduction = std::min(unallocated_, remaining);
+    unallocated_ = round2(unallocated_ - deduction);
+    remaining = round2(remaining - deduction);
+  }
+
+  // 2. Then withdraw from non-committed buckets.
+  for (auto& bucket : buckets_) {
+    if (remaining <= 0.005)
+      break;
+
+    if (!bucket.committed() && bucket.balance() > 0.0) {
+      double deduction = std::min(bucket.balance(), remaining);
+      bucket.adjustBalance(-deduction);
+      remaining = round2(remaining - deduction);
+    }
+  }
+
+  // 3. If still needed, withdraw from committed buckets.
+  for (auto& bucket : buckets_) {
+    if (remaining <= 0.005)
+      break;
+
+    if (bucket.committed() && bucket.balance() > 0.0) {
+      double deduction = std::min(bucket.balance(), remaining);
+      bucket.adjustBalance(-deduction);
+      remaining = round2(remaining - deduction);
+    }
+  }
+
   totalBalance_ = round2(totalBalance_ - amount);
-
-  if (buckets_[index].balance() < 0.005)
-    buckets_[index].adjustBalance(-buckets_[index].balance());
 
   if (totalBalance_ < 0.005)
     totalBalance_ = 0.0;
+
+  if (unallocated_ < 0.005)
+    unallocated_ = 0.0;
 
   return Status::success("Withdrawal completed successfully.");
 }
