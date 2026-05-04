@@ -82,6 +82,8 @@ Status Account::toggleCommitted(const size_t index) {
 // --------- Money operations ---------
 
 Status Account::deposit(double amount) {
+  if (!std::isfinite(amount))
+    return Status::failure("Deposit must be a finite number.");
   if (!(amount > 0.0))
     return Status::failure("Deposit amount must be positive.");
   amount = round2(amount);
