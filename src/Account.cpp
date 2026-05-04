@@ -2,7 +2,7 @@
 // Created by Patrick Charlson on 21/4/2026.
 //
 
-#include "Account.h"
+#include "../include/Account.h"
 
 #include <algorithm>
 #include <cmath>
@@ -92,7 +92,7 @@ Status Account::deposit(double amount) {
   return Status::success("Deposited " + fmtMoney(amount) + ".");
 }
 
-Account::WithdrawCheck Account::checkWithdrawal(const double amount) const {
+WithdrawCheck Account::checkWithdrawal(const double amount) const {
   if (amount > totalBalance_ + 1e-9)
     return WithdrawCheck::ExceedsBalance;
   if (amount > safeToSpend() + 1e-9)
@@ -192,6 +192,7 @@ double Account::allocatedPercentageTotal() const {
 
 void Account::clearSession() {
   buckets_.clear();
+  journal_.clear();
   totalBalance_ = 0.0;
   unallocated_ = 0.0;
 }

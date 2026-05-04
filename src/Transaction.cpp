@@ -2,7 +2,7 @@
 // Created by sithm on 29/04/2026.
 //
 
-#include "Transaction.h"
+#include "../include/Transaction.h"
 
 #include <iomanip>
 #include <iostream>
@@ -10,7 +10,7 @@
 #include <utility>
 
 
-Transaction::Transaction(TxType type, double amount, std::string description) :
+Transaction::Transaction(const TxType type, const double amount, std::string description) :
     type_(type), amount_(amount), description_(std::move(description)), timestamp_(std::time(nullptr)) {}
 
 std::string Transaction::typeLabel() const {
