@@ -2,12 +2,12 @@
 // Created by Patrick Charlson on 3/5/2026.
 //
 
-#include "Transaction.h"
+#include "../include/Transaction.h"
 
 #include <iomanip>
 
 
-Transaction::Transaction(TxType type, double amount, std::string description) :
+Transaction::Transaction(const TxType type, const double amount, std::string description) :
     type_(type), amount_(amount), description_(std::move(description)), timestamp_(std::time(nullptr)) {}
 
 std::string Transaction::typeLabel() const {

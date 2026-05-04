@@ -4,8 +4,8 @@
 
 #include <string>
 
-#include "AuthService.h"
-#include "Sha256.h"
+#include "../include/AuthService.h"
+#include "../include/Sha256.h"
 
 User::User(std::string username, std::string passwordHash) :
     username_(std::move(username)), passwordHash_(std::move(passwordHash)) {}
@@ -16,6 +16,9 @@ Status AuthService::registerUser(const std::string& username, const std::string&
     return Status::failure("Username cannot be empty.");
   if (password.size() < 4)
     return Status::failure("Password must be at least 4 characters.");
+
+  if (users_.find(username) != users_.end())
+    return Status::failure("username already exists. Please choose another.");
 
   std::string hash = Sha256::hash(password);
   users_[username] = std::make_unique<User>(username, hash);

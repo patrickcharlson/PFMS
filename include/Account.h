@@ -18,6 +18,10 @@ struct Status {
   static Status failure(std::string m) { return {false, std::move(m)}; }
 };
 
+// Withdrawal pre-check result — the UI uses this to decide whether
+// to show a warning before calling withdraw().
+enum class WithdrawCheck { Ok, ExceedsBalance, ExceedsSafeToSpend };
+
 class Account {
 public:
   // ---- Bucket management  ----
@@ -29,7 +33,6 @@ public:
 
   // ---- Money operations  ----
   Status deposit(double amount);
-  enum class WithdrawCheck { Ok, ExceedsBalance, ExceedsSafeToSpend };
   WithdrawCheck checkWithdrawal(double amount) const;
   Status withdraw(double amount);
   Status transferFromUnallocated(size_t bucketIndex, double amount);

@@ -2,9 +2,9 @@
 // Created by Patrick Charlson on 25/4/2026.
 //
 
-#include "PFMS.h"
+#include "../include/PFMS.h"
 
-#include "Color.h"
+#include "../include/Color.h"
 
 #include <iomanip>
 #include <iostream>

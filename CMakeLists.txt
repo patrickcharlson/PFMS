@@ -30,4 +30,5 @@ add_executable(tests_runner EXCLUDE_FROM_ALL
         src/AuthService.cpp
         src/Bucket.cpp
         src/Sha256.cpp
+        src/Transaction.cpp
 )

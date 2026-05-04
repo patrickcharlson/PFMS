@@ -1,6 +1,6 @@
 
-#include "Color.h"
-#include "PFMS.h"
+#include "../include/Color.h"
+#include "../include/PFMS.h"
 #include <iostream>
 
 
