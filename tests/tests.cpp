@@ -131,7 +131,7 @@ section("Account :: withdraw rejects amount greater than total balance");
   CHECK(approx(a.safeToSpend(), 10.00), "safe to spend updated to 10.00");
 }
 
-  section("Account :: withdraw  rejects negative amount");
+  section("Account :: withdraw rejects negative amount");
   {
     Account a;
 
@@ -145,7 +145,7 @@ section("Account :: withdraw rejects amount greater than total balance");
     CHECK(approx(a.buckets()[0].balance(), 100.00), "bucket balance remains unchanged after negative withdrawal");
   }
 
-  section("Account :: withdraw  rejects zero amount");
+  section("Account :: withdraw rejects zero amount");
   {
     Account a;
 
@@ -176,7 +176,7 @@ section("Account :: withdraw rejects amount greater than total balance");
   CHECK(approx(a.safeToSpend(), 0.00), "safe to spend is 0.00 after non-committed funds are used");
 }
 
-  section("Account :: withdraw  works after committed bucket confirmation");
+  section("Account :: withdraw works after committed bucket confirmation");
   {
     Account a;
 
