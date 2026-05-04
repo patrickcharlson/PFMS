@@ -45,7 +45,6 @@ LoginOutcome AuthService::login(const std::string& username, const std::string& 
 
 void AuthService::logout() {
   if (currentUser_) {
-    currentUser_->account().clearSession();
     currentUser_ = nullptr;
   }
 }

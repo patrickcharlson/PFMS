@@ -467,11 +467,11 @@ void PFMS::runWithdraw() {
   }
 
   const auto check = acc.checkWithdrawal(amount);
-  if (check == Account::WithdrawCheck::ExceedsBalance) {
+  if (check == WithdrawCheck::ExceedsBalance) {
     showError("Amount exceeds available balance. Please enter a value up to " + fmtMoney(acc.totalBalance()) + ".");
     return;
   }
-  if (check == Account::WithdrawCheck::ExceedsSafeToSpend) {
+  if (check == WithdrawCheck::ExceedsSafeToSpend) {
     showWarning("Withdrawal of " + fmtMoney(amount) + " exceeds your Safe to Spend (" + fmtMoney(acc.safeToSpend()) +
                 ") and will draw on COMMITTED funds.");
     if (!confirm("Proceed anyway?")) {

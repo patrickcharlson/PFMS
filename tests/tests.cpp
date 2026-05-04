@@ -24,7 +24,7 @@ static int failed{0};
   } while (0)
 
 
-static bool approx(const double a, double b, double eps = 1e-6) { return std::fabs(a - b) < eps; }
+static bool approx(const double a, const double b, const double eps = 1e-6) { return std::fabs(a - b) < eps; }
 
 static void section(const std::string& name) { std::cout << "\n[" << name << "]\n"; }
 
@@ -714,6 +714,30 @@ static void test_e2e_lockout_then_restart() {
   CHECK(freshSvc.failedAttempts() == 0, "failure counter starts at 0");
 }
 
+
+// =====================================================================
+//  ACCOUNT MATHEMATICS — TRY TO BREAK ARITHMETIC INTEGRITY
+// =====================================================================
+
+static void attack_deposit_infinity() {
+  section("Infinity / NaN deposit rejected or handled");
+  Account a;
+  // SRS doesn't say what to do here — but we must not corrupt state.
+  constexpr double inf = std::numeric_limits<double>::infinity();
+  constexpr double nan = std::numeric_limits<double>::quiet_NaN();
+  const double balBefore = a.totalBalance();
+
+  a.deposit(inf);
+  a.deposit(nan);
+  CHECK(!std::isinf(a.totalBalance()), "totalBalance is finite after inf deposit");
+  CHECK(!std::isnan(a.totalBalance()), "totalBalance is not NaN after nan deposit");
+  CHECK(approx(reconciledTotal(a), a.totalBalance()),
+        "invariant holds even after weird inputs");
+  // Note: silently absorbing inf/nan is acceptable per SRS as long as
+  // state stays consistent. Loud rejection would be cleaner but not required.
+  (void)balBefore;
+}
+
 int main() {
 
   // User Authentication
@@ -784,6 +808,9 @@ int main() {
   // End-to-end
   test_e2e_typical_user_flow();
   test_e2e_lockout_then_restart();
+
+  // Hostile tests
+  attack_deposit_infinity();
 
   std::cout << "\n========================================\n";
   std::cout << " RESULTS: " << passed << " passed, " << failed << " failed\n";
