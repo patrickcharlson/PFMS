@@ -18,7 +18,6 @@ private:
   AuthService auth_;
   bool quit_{false};
 
-
   // ---- Screen builders (layout: title, body, footer) ----
 
   static void showHeader(const std::string& title);
@@ -54,6 +53,8 @@ private:
   void runToggleCommitted();
   void runDeposit();
   void runWithdraw();
+  void runTransfer();
+  void runJournal();
 
 
   // ---- Formatting ----

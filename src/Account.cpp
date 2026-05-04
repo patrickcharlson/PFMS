@@ -88,68 +88,80 @@ Status Account::deposit(double amount) {
   amount = round2(amount);
   distributeDeposit(amount);
   totalBalance_ = round2(totalBalance_ + amount);
+  log(TxType::Deposit, amount, "Deposit (Smart-Distribute)");
   return Status::success("Deposited " + fmtMoney(amount) + ".");
+}
+
+Account::WithdrawCheck Account::checkWithdrawal(const double amount) const {
+  if (amount > totalBalance_ + 1e-9)
+    return WithdrawCheck::ExceedsBalance;
+  if (amount > safeToSpend() + 1e-9)
+    return WithdrawCheck::ExceedsSafeToSpend;
+  return WithdrawCheck::Ok;
 }
 
 Status Account::withdraw(double amount) {
   if (!(amount > 0.0))
-    return Status::failure("Withdrawal amount must be positive.");
-
+    return Status::failure("Withdraw amount must be positive.");
   amount = round2(amount);
-
   if (amount > totalBalance_ + 1e-9)
-    return Status::failure("Withdrawal amount cannot exceed total balance.");
-
-  double availableFunds = unallocated_;
-  for (const auto& bucket : buckets_) {
-    availableFunds += bucket.balance();
-  }
-
-  if (amount > round2(availableFunds) + 1e-9)
-    return Status::failure("Withdrawal amount cannot exceed available funds.");
-
+    return Status::failure("Amount exceeds available balance. Please enter a value up to " + fmtMoney(totalBalance_) +
+                           ".");
   double remaining = amount;
 
-  // 1. Withdraw from unallocated money first.
-  if (unallocated_ > 0.0 && remaining > 0.005) {
-    double deduction = std::min(unallocated_, remaining);
-    unallocated_ = round2(unallocated_ - deduction);
-    remaining = round2(remaining - deduction);
-  }
-
-  // 2. Then withdraw from non-committed buckets.
-  for (auto& bucket : buckets_) {
-    if (remaining <= 0.005)
-      break;
-
-    if (!bucket.committed() && bucket.balance() > 0.0) {
-      double deduction = std::min(bucket.balance(), remaining);
-      bucket.adjustBalance(-deduction);
-      remaining = round2(remaining - deduction);
+  auto drainFrom = [&](const bool committed) {
+    if (remaining <= 0.0)
+      return;
+    double poolTotal = 0.0;
+    std::vector<size_t> indices;
+    for (size_t i = 0; i < buckets_.size(); ++i) {
+      if (buckets_[i].committed() == committed) {
+        poolTotal += buckets_[i].balance();
+        indices.push_back(i);
+      }
     }
-  }
+    if (poolTotal <= 0.0 || indices.empty())
+      return;
 
-  // 3. If still needed, withdraw from committed buckets.
-  for (auto& bucket : buckets_) {
-    if (remaining <= 0.005)
-      break;
-
-    if (bucket.committed() && bucket.balance() > 0.0) {
-      double deduction = std::min(bucket.balance(), remaining);
-      bucket.adjustBalance(-deduction);
-      remaining = round2(remaining - deduction);
+    const double take = std::min(remaining, poolTotal);
+    double drawn = 0.0;
+    for (size_t k = 0; k < indices.size(); ++k) {
+      const size_t i = indices[k];
+      const bool last = k + 1 == indices.size();
+      double share = last ? round2(take - drawn) : round2(take * (buckets_[i].balance() / poolTotal));
+      if (share > buckets_[i].balance())
+        share = buckets_[i].balance();
+      buckets_[i].adjustBalance(-share);
+      drawn = round2(drawn + share);
     }
-  }
+    remaining = round2(remaining - take);
+  };
+
+  const double fromUnalloc = std::min(unallocated_, remaining);
+  unallocated_ = round2(unallocated_ - fromUnalloc);
+  remaining = round2(remaining - fromUnalloc);
+
+  drainFrom(/*committed =*/false);
+  drainFrom(/*committed =*/true);
 
   totalBalance_ = round2(totalBalance_ - amount);
+  log(TxType::Withdrawal, amount, "Withdrawal");
+  return Status::success("Withdrew " + fmtMoney(amount) + ".");
+}
 
-  if (totalBalance_ < 0.005)
-    totalBalance_ = 0.0;
+Status Account::transferFromUnallocated(const size_t bucketIndex, double amount) {
+  if (bucketIndex >= buckets_.size())
+    return Status::failure("Invalid bucket selection.");
+  if (!(amount > 0.0))
+    return Status::failure("Transfer amount must be positive.");
+  amount = round2(amount);
+  if (amount > unallocated_ + 1e-9)
+    return Status::failure("Unallocated pool only has " + fmtMoney(unallocated_) + ".");
 
-  if (unallocated_ < 0.005)
-    unallocated_ = 0.0;
-
-  return Status::success("Withdrawal completed successfully.");
+  unallocated_ = round2(unallocated_ - amount);
+  buckets_[bucketIndex].adjustBalance(amount);
+  log(TxType::Transfer, amount, "Transfer to '" + buckets_[bucketIndex].name() + "'");
+  return Status::success("Transferred " + fmtMoney(amount) + " to '" + buckets_[bucketIndex].name() + "'.");
 }
 
 void Account::distributeDeposit(const double amount) {
@@ -178,4 +190,12 @@ double Account::allocatedPercentageTotal() const {
 
 // --------- Journal & session ---------
 
-void Account::clearSession() { buckets_.clear(); }
+void Account::clearSession() {
+  buckets_.clear();
+  totalBalance_ = 0.0;
+  unallocated_ = 0.0;
+}
+
+void Account::log(TxType type, double amount, const std::string& description) {
+  journal_.emplace_back(type, amount, description);
+}

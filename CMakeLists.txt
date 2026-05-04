@@ -20,6 +20,7 @@ add_executable(PFMS
         src/Sha256.cpp
         src/Bucket.cpp
         src/Color.cpp
+        src/Transaction.cpp
 )
 
 # Test runner — separate executable, not built by default

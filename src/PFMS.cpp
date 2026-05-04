@@ -8,8 +8,8 @@
 
 #include <iomanip>
 #include <iostream>
-#include <string>
 #include <sstream>
+#include <string>
 
 
 static constexpr int LINE_WIDTH = 40;
@@ -238,7 +238,11 @@ void PFMS::runMainMenu() {
   else if (line == "3")
     runDeposit();
   else if (line == "4")
-  runWithdraw();
+    runWithdraw();
+  else if (line == "5")
+    runTransfer();
+  else if (line == "6")
+    runJournal();
   else if (line == "7") {
     auth_.logout();
     showInfo("Logged out. Session cleared.");
@@ -438,57 +442,91 @@ void PFMS::runDeposit() {
 
 void PFMS::runWithdraw() {
   auto& acc = auth_.currentUser()->account();
-
-  showHeader("WITHDRAW FUNDS");
-
-  std::cout << " Total Balance:    " << fmtMoney(acc.totalBalance()) << "\n";
-  std::cout << " Committed Funds:  " << fmtMoney(acc.committedTotal()) << "\n";
-  std::cout << " Safe to Spend:    " << fmtMoney(acc.safeToSpend()) << "\n\n";
+  showHeader("WITHDRAW");
+  double amount;
 
   if (acc.totalBalance() <= 0.0) {
-    showError("No funds are available to withdraw.");
+    showError("No funds available to withdraw. Please make a deposit first.");
+    showFooter("Press Enter to return to Main Menu.");
+    std::string s;
+    std::getline(std::cin, s);
     return;
   }
 
-  double amount;
   if (!readDouble("Enter withdrawal amount (e.g., 50.00):", amount)) {
-    showError("Please enter a numeric withdrawal amount.");
+    showError("Please enter a numeric amount (e.g., 50.00).");
     return;
   }
-
-  if (amount <= 0.0) {
+  if (!(amount > 0)) {
     showError("Withdrawal amount must be positive.");
     return;
   }
 
-  if (amount > acc.totalBalance() + 1e-9) {
-    showError("Withdrawal amount cannot exceed total balance.");
+  const auto check = acc.checkWithdrawal(amount);
+  if (check == Account::WithdrawCheck::ExceedsBalance) {
+    showError("Amount exceeds available balance. Please enter a value up to " + fmtMoney(acc.totalBalance()) + ".");
     return;
   }
-
-  if (amount > acc.safeToSpend() + 1e-9) {
-    showWarning("This withdrawal exceeds your Safe to Spend balance. "
-                "Committed funds will be used if you proceed.");
-
-    if (!confirm("Proceed with withdrawal?")) {
-      showInfo("Withdrawal cancelled.");
+  if (check == Account::WithdrawCheck::ExceedsSafeToSpend) {
+    showWarning("Withdrawal of " + fmtMoney(amount) + " exceeds your Safe to Spend (" + fmtMoney(acc.safeToSpend()) +
+                ") and will draw on COMMITTED funds.");
+    if (!confirm("Proceed anyway?")) {
+      showInfo("Withdraw cancelled.");
       return;
     }
   }
-
-  double safeBefore = acc.safeToSpend();
-
   auto [ok, message] = acc.withdraw(amount);
-
   if (!ok) {
     showError(message);
     return;
   }
-
   showInfo(message);
-  showInfo("Previous Safe to Spend: " + fmtMoney(safeBefore));
-  showInfo("New Total Balance:      " + fmtMoney(acc.totalBalance()));
-  showInfo("New Safe to Spend:      " + fmtMoney(acc.safeToSpend()));
+  showInfo("New Total Balance: " + fmtMoney(acc.totalBalance()));
+  showInfo("Safe to Spend: " + fmtMoney(acc.safeToSpend()));
+}
+
+void PFMS::runTransfer() {
+  auto& acc = auth_.currentUser()->account();
+  showHeader("TRANSFER FROM UNALLOCATED");
+  if (acc.buckets().empty()) {
+    showError("No buckets to transfer to.");
+    return;
+  }
+  std::cout << " Unallocated pool: " << fmtMoney(acc.unallocated()) << "\n";
+  size_t i = 1;
+  for (const auto& b: acc.buckets())
+    std::cout << " [" << i++ << "] " << b.name() << " " << fmtMoney(b.balance()) << "\n";
+
+  size_t sel;
+  if (!readSizeT("Select destination bucket number:", sel) || sel < 1 || sel > acc.buckets().size()) {
+    showError("Invalid bucket selection.");
+    return;
+  }
+  double amount;
+  if (!readDouble("Enter transfer amount (e.g., 25.00):", amount)) {
+    showError("Invalid bucket selection.");
+    return;
+  }
+  if (auto [ok, message] = acc.transferFromUnallocated(sel - 1, amount); ok)
+    showInfo(message);
+  else
+    showError(message);
+}
+
+void PFMS::runJournal() {
+  const auto& acc = auth_.currentUser()->account();
+  showHeader("TRANSACTION JOURNAL");
+  if (acc.journal().empty()) {
+    std::cout << " (no transactions this session)\n";
+  } else {
+    for (const auto& tx: acc.journal()) {
+      std::cout << " " << tx.formattedTimestamp() << "  " << std::left << std::setw(11) << tx.typeLabel() << " "
+                << std::setw(11) << fmtMoney(tx.amount()) << " " << tx.description() << "\n";
+    }
+  }
+  showFooter("Press Enter to return to Main Menu.");
+  std::string s;
+  std::getline(std::cin, s);
 }
 
 

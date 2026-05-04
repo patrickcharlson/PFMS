@@ -18,8 +18,8 @@ public:
   bool committed() const { return committed_; }
 
   void setName(const std::string& n) { name_ = n; }
-  void setPercentage(double p) { percentage_ = p; }
-  void setCommitted(bool c) { committed_ = c; }
+  void setPercentage(const double p) { percentage_ = p; }
+  void setCommitted(const bool c) { committed_ = c; }
 
   void adjustBalance(const double delta) { balance_ += delta; }
 
