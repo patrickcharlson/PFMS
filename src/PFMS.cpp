@@ -179,9 +179,11 @@ void PFMS::runRegister() {
   std::string username, password;
   if (!readLine("Choose a username (e.g., patrick):", username) || username.empty()) {
     showError("Username cannot be empty.");
+    return;
   }
   if (!readLine("Choose a password (min 4 characters):", password) || password.empty()) {
     showError("Password cannot be empty.");
+    return;
   }
   if (auto [ok, message] = auth_.registerUser(username, password); !ok)
     showError(message);

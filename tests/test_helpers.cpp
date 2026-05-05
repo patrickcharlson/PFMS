@@ -6,6 +6,9 @@
 
 int passed = 0;
 int failed = 0;
+int section_count = 0;
+int section_passed = 0;
+int section_failed = 0;
 
 
 double reconciledTotal(const Account& a) {
