@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <sstream>
 
+
 inline double round2(const double v) { return std::round(v * 100.0) / 100.0; }
 
 inline std::string fmtMoney(const double v) {
@@ -24,39 +25,71 @@ double Account::committedTotal() const {
   return round2(sum);
 }
 
+std::string toLowerBucket(const std::string& s) {
+  std::string out;
+  out.reserve(s.size());
+  for (const char c: s)
+    out.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+  return out;
+}
+
+// Strip leading/trailing whitespace. Used to normalise bucket names so
+// " Rent " and "Rent" are treated as the same name.
+std::string trim(const std::string& s) {
+  const auto first = s.find_first_not_of(" \t\r\n");
+  if (first == std::string::npos)
+    return "";
+  const auto last = s.find_last_not_of(" \t\r\n");
+  return s.substr(first, last - first + 1);
+}
+
 
 // --------- Bucket management ---------
 
 Status Account::createBucket(const std::string& name, double percentage, bool committed) {
-  if (name.empty())
+  const std::string trimmedName = trim(name);
+  if (trimmedName.empty())
     return Status::failure("Bucket name cannot be empty.");
 
   if (percentage < 0.0 || percentage > 100.0)
     return Status::failure("Percentage must be between 0 and 100.");
 
+  // reject duplicate names (case-insensitive)
+  if (findBucketByName(name) >= 0) {
+    return Status::failure("A bucket named '" + name + "' already exists.");
+  }
+
+  if (findBucketByName(trimmedName) >= 0)
+    return Status::failure("A bucket named '" + trimmedName + "' already exists.");
+
   if (const double newTotal = allocatedPercentageTotal() + percentage; newTotal > 100.0 + 1e-9)
     return Status::failure("Total bucket allocation would exceed 100%. Currently allocated: " +
                            std::to_string(static_cast<int>(allocatedPercentageTotal())) + "%.");
 
-  buckets_.emplace_back(name, percentage, committed);
-  return Status::success("Bucket '" + name + "' created.");
+  buckets_.emplace_back(trimmedName, percentage, committed);
+  return Status::success("Bucket '" + trimmedName + "' created.");
 }
 
 Status Account::editBucket(const size_t index, const std::string& newName, const double newPercentage) {
   if (index >= buckets_.size())
     return Status::failure("Invalid bucket selection");
 
-  if (newName.empty())
+  const std::string trimmedName = trim(newName);
+  if (trimmedName.empty())
     return Status::failure("Bucket name cannot be empty.");
 
   if (newPercentage < 0.0 || newPercentage > 100.0)
     return Status::failure("Percentage must be between 0 and 100.");
 
+  if (const int existing = findBucketByName(trimmedName); existing >= 0 && static_cast<size_t>(existing) != index) {
+    return Status::failure("A bucket named '" + trimmedName + "' already exits.");
+  }
+
   if (const double currentExcludingThis = allocatedPercentageTotal() - buckets_[index].percentage();
       currentExcludingThis + newPercentage > 100.0 + 1e-9)
     return Status::failure("Edit would push total allocation above 100%.");
 
-  buckets_[index].setName(newName);
+  buckets_[index].setName(trimmedName);
   buckets_[index].setPercentage(newPercentage);
   return Status::success("Bucket updated.");
 }
@@ -174,6 +207,15 @@ void Account::distributeDeposit(const double amount) {
   }
   const double remainder = round2(amount - allocated);
   unallocated_ = round2(unallocated_ + remainder);
+}
+
+int Account::findBucketByName(const std::string& name) const {
+  const std::string target = toLowerBucket(name);
+  for (size_t i = 0; i < buckets_.size(); ++i) {
+    if (toLowerBucket(buckets_[i].name()) == target)
+      return static_cast<int>(i);
+  }
+  return -1;
 }
 
 

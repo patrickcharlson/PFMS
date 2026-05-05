@@ -35,15 +35,18 @@ void PFMS::run() {
 }
 
 void PFMS::showHeader(const std::string& title) {
-  std::cout << "\n" << DIVIDER << "\n";
-  std::cout << " PFMS — " << title << "  [? = Help]\n";
-  std::cout << DIVIDER << "\n";
+  std::cout << "\n" << Color::Cyan << DIVIDER << Color::Reset << "\n";
+  std::cout << " " << Color::Bold << Color::BrightCyan << "PFMS" << Color::Reset << " — " << Color::Bold << title
+            << Color::Reset << Color::Dim << "  [? = Help]" << Color::Reset << "\n";
+  std::cout << Color::Cyan << DIVIDER << Color::Reset << "\n";
 }
 
 
 // ---------- Screen scaffolding ----------
 
-void PFMS::showFooter(const std::string& prompt) { std::cout << SUBDIV << "\n " << prompt << " "; }
+void PFMS::showFooter(const std::string& prompt) {
+  std::cout << Color::Dim << SUBDIV << Color::Reset << "\n " << Color::Bold << prompt << Color::Reset << " ";
+}
 
 void PFMS::showError(const std::string& message) {
   std::cout << "\n" << Color::BrightRed << "[ERROR] " << message << Color::Reset << "\n";
@@ -215,13 +218,13 @@ void PFMS::runLogin() {
 
 void PFMS::runMainMenu() {
   showHeader("MAIN MENU — " + auth_.currentUser()->username());
-  std::cout << " [1] Account Summary\n"
-            << " [2] Manage Buckets\n"
-            << " [3] Deposit\n"
-            << " [4] Withdraw\n"
-            << " [5] Transfer from Unallocated\n"
-            << " [6] Transaction Journal\n"
-            << " [7] Logout\n";
+  std::cout << " " << Color::BrightCyan << "[1]" << Color::Reset << " Account Summary\n"
+            << " " << Color::BrightCyan << "[2]" << Color::Reset << " Manage Buckets\n"
+            << " " << Color::BrightCyan << "[3]" << Color::Reset << " Deposit\n"
+            << " " << Color::BrightCyan << "[4]" << Color::Reset << " Withdraw\n"
+            << " " << Color::BrightCyan << "[5]" << Color::Reset << " Transfer from Unallocated\n"
+            << " " << Color::BrightCyan << "[6]" << Color::Reset << " Transaction Journal\n"
+            << " " << Color::BrightCyan << "[7]" << Color::Reset << " Logout\n";
   showFooter("Enter choice (1-7) or ? for help:");
   std::string line;
   if (!readLine("", line)) {
@@ -262,6 +265,17 @@ void PFMS::runAccountSummary() {
   std::cout << " Total Balance:    " << Color::Cyan << fmtMoney(acc.totalBalance()) << Color::Reset << "\n";
   std::cout << " Committed Funds:  " << Color::Yellow << fmtMoney(acc.committedTotal()) << Color::Reset << "\n";
   std::cout << " " << Color::Bold << "BUCKETS:" << Color::Reset << "\n";
+
+  auto pctColor = [](const double p) {
+    if (p >= 50.0)
+      return Color::BrightYellow; // big chunk
+    if (p >= 25.0)
+      return Color::Cyan; // medium
+    if (p > 0.0)
+      return Color::Dim; // small
+    return Color::Dim;
+  };
+
   if (acc.buckets().empty()) {
     std::cout << "   (no buckets configured)\n";
   } else {
@@ -270,9 +284,12 @@ void PFMS::runAccountSummary() {
       std::cout << "   [" << i++ << "] " << std::left << std::setw(15) << b.name() << " " << std::setw(10)
                 << fmtMoney(b.balance()) << " " << std::setw(4)
                 << (std::to_string(static_cast<int>(b.percentage())) + "%") << " ";
-      if (b.committed()) {
+      std::cout << "   " << Color::BrightCyan << "[" << i++ << "]" << Color::Reset << " " << std::left << std::setw(15)
+                << b.name() << " " << Color::Green << std::setw(10) << fmtMoney(b.balance()) << Color::Reset << " "
+                << pctColor(b.percentage()) << std::setw(4) << (std::to_string(static_cast<int>(b.percentage())) + "%")
+                << Color::Reset << " ";
+      if (b.committed())
         std::cout << Color::Yellow << "COMMITTED" << Color::Reset;
-      }
       std::cout << "\n";
     }
   }
@@ -516,12 +533,27 @@ void PFMS::runTransfer() {
 void PFMS::runJournal() {
   const auto& acc = auth_.currentUser()->account();
   showHeader("TRANSACTION JOURNAL");
+
+  auto typeColor = [](TxType t) {
+    switch (t) {
+      case TxType::Deposit:
+        return Color::Green;
+      case TxType::Withdrawal:
+        return Color::Red;
+      case TxType::Transfer:
+        return Color::Cyan;
+    }
+    return Color::Reset;
+  };
+
   if (acc.journal().empty()) {
     std::cout << " (no transactions this session)\n";
   } else {
     for (const auto& tx: acc.journal()) {
-      std::cout << " " << tx.formattedTimestamp() << "  " << std::left << std::setw(11) << tx.typeLabel() << " "
-                << std::setw(11) << fmtMoney(tx.amount()) << " " << tx.description() << "\n";
+      std::cout << " " << Color::Dim << tx.formattedTimestamp() << Color::Reset << "  " << typeColor(tx.type())
+                << std::left << std::setw(11) << tx.typeLabel() << Color::Reset << " " << Color::Bold << std::setw(11)
+                << fmtMoney(tx.amount()) << Color::Reset << " " << Color::Dim << tx.description() << Color::Reset
+                << "\n";
     }
   }
   showFooter("Press Enter to return to Main Menu.");

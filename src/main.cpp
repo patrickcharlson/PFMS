@@ -7,10 +7,11 @@
 int main() {
   Color::enable();
   std::cout << "\n";
-  std::cout << "========================================\n";
-  std::cout << " Personal Finance & Liquidity Management\n";
-  std::cout << "      System (PFMS) — Version 1.0\n";
-  std::cout << "========================================\n";
+  std::cout << Color::Cyan << "========================================" << Color::Reset << "\n";
+  std::cout << Color::Bold << Color::BrightGreen << " Personal Finance & Liquidity Management" << Color::Reset << "\n";
+  std::cout << " " << Color::Bold << "      System (PFMS)" << Color::Reset << Color::Dim << " — Version 1.0"
+            << Color::Reset << "\n";
+  std::cout << Color::Cyan << "========================================" << Color::Reset << "\n";
   PFMS ms;
   ms.run();
   std::cout << "\n Goodbye.\n";

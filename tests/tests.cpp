@@ -103,6 +103,26 @@ static void test_authentication_logout() {
   CHECK(svc.currentUser() == nullptr, "currentUser nulled after logout");
 }
 
+static void test_registration_username_case_insensitive() {
+  section("§4.1 REQ-1  Username uniqueness is case-insensitive");
+  AuthService svc;
+  CHECK(svc.registerUser("alice", "secret123").ok, "register 'alice' succeeds");
+  CHECK(!svc.registerUser("Alice", "different456").ok, "'Alice' rejected as duplicate");
+  CHECK(!svc.registerUser("ALICE", "another789").ok, "'ALICE' rejected as duplicate");
+  CHECK(!svc.registerUser("AlIcE", "more012").ok,    "'AlIcE' rejected as duplicate");
+}
+
+static void test_login_username_case_insensitive() {
+  section("§4.1 REQ-3  Login accepts any case of registered username");
+  AuthService svc;
+  svc.registerUser("alice", "secret123");
+  CHECK(svc.login("alice", "secret123") == LoginOutcome::Success, "login as 'alice' works");
+  svc.logout();
+  CHECK(svc.login("Alice", "secret123") == LoginOutcome::Success, "login as 'Alice' works");
+  svc.logout();
+  CHECK(svc.login("ALICE", "secret123") == LoginOutcome::Success, "login as 'ALICE' works");
+}
+
 
 // =====================================================================
 //  Virtual Bucket Management
@@ -205,6 +225,17 @@ static void test_bucket_toggle_committed() {
   CHECK(!a.buckets()[0].committed(), "back to not committed");
 
   CHECK(!a.toggleCommitted(99).ok, "invalid index rejected");
+}
+
+static void test_case_insensitive_duplicate_rejected() {
+  section("Duplicate detection is case-insensitive");
+  Account a;
+  CHECK(a.createBucket("Rent", 30).ok, "create 'Rent'");
+
+  CHECK(!a.createBucket("rent", 20).ok, "'rent' (lowercase) rejected as duplicate of 'Rent'");
+  CHECK(!a.createBucket("RENT", 20).ok, "'RENT' (uppercase) rejected as duplicate");
+  CHECK(!a.createBucket("ReNt", 20).ok, "'ReNt' (mixed case) rejected as duplicate");
+  CHECK(a.buckets().size() == 1, "still only 1 bucket");
 }
 
 
@@ -731,11 +762,26 @@ static void attack_deposit_infinity() {
   a.deposit(nan);
   CHECK(!std::isinf(a.totalBalance()), "totalBalance is finite after inf deposit");
   CHECK(!std::isnan(a.totalBalance()), "totalBalance is not NaN after nan deposit");
-  CHECK(approx(reconciledTotal(a), a.totalBalance()),
-        "invariant holds even after weird inputs");
+  CHECK(approx(reconciledTotal(a), a.totalBalance()), "invariant holds even after weird inputs");
   // Note: silently absorbing inf/nan is acceptable per SRS as long as
   // state stays consistent. Loud rejection would be cleaner but not required.
-  (void)balBefore;
+  (void) balBefore;
+}
+
+
+// =====================================================================
+//  Misc
+// =====================================================================
+
+static void test_whitespace_variants_rejected() {
+  section("Whitespace variants of the same name treated as duplicates");
+  // "Rent " (trailing space) shouldn't sneak past the check — that's a typo,
+  // not a different bucket.
+  Account a;
+  a.createBucket("Rent", 30);
+  CHECK(!a.createBucket("Rent ", 20).ok, "'Rent ' (trailing space) rejected");
+  CHECK(!a.createBucket(" Rent", 20).ok, "' Rent' (leading space) rejected");
+  CHECK(!a.createBucket("Rent\t", 20).ok, "'Rent\\t' (trailing tab) rejected");
 }
 
 int main() {
@@ -747,6 +793,8 @@ int main() {
   test_authentication_lockout_after_three_failures();
   test_authentication_failure_counter_resets_on_success();
   test_authentication_logout();
+  test_registration_username_case_insensitive();
+  test_login_username_case_insensitive();
 
   // Virtual Bucket Management
   test_bucket_create_basic();
@@ -758,6 +806,7 @@ int main() {
   test_bucket_delete_returns_balance();
   test_bucket_delete_invalid_index();
   test_bucket_toggle_committed();
+  test_case_insensitive_duplicate_rejected();
 
   // Deposit and Smart-Distribute
   test_deposit_basic();
@@ -811,6 +860,9 @@ int main() {
 
   // Hostile tests
   attack_deposit_infinity();
+
+  // Misc
+  test_whitespace_variants_rejected();
 
   std::cout << "\n========================================\n";
   std::cout << " RESULTS: " << passed << " passed, " << failed << " failed\n";

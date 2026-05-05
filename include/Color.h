@@ -8,14 +8,14 @@
 #include <string>
 
 namespace Color {
-  // Reset to terminal defaults — always pair this with any color above.
+  // Reset to terminal defaults — always pair this with any colour above.
   inline const std::string Reset = "\033[0m";
 
   // Styles
   inline const std::string Bold = "\033[1m";
   inline const std::string Dim = "\033[2m";
 
-  // Foreground colors
+  // Foreground colours
   inline const std::string Red = "\033[31m";
   inline const std::string Green = "\033[32m";
   inline const std::string Yellow = "\033[33m";

@@ -4,6 +4,8 @@
 
 #ifndef PFMS_SHA256_H
 #define PFMS_SHA256_H
+
+#include <cstdint>
 #include <string>
 
 class Sha256 {
