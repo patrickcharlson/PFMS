@@ -62,6 +62,9 @@ private:
   std::vector<Transaction> journal_;
   double totalBalance_{0.0};
   double unallocated_{0.0};
+  // Returns the index of an existing bucket whose name matches `name`
+  // case-insensitively, or -1 if none. Used to enforce name uniqueness.
+  int findBucketByName(const std::string& name) const;
 
   void distributeDeposit(double amount);
   void log(TxType type, double amount, const std::string& description);

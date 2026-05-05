@@ -25,10 +25,29 @@ add_executable(PFMS
 
 # Test runner — separate executable, not built by default
 add_executable(tests_runner EXCLUDE_FROM_ALL
-        tests/tests.cpp
+        # Test infrastructure
+        tests/test_main.cpp
+        tests/test_helpers.cpp
+
+        # Per feature test files
+        tests/test_auth.cpp
+        tests/test_buckets.cpp
+        tests/test_helpers.h
+        tests/test_safety.cpp
+        tests/test_journal.cpp
+        tests/test_deposit.cpp
+        tests/test_transfer.cpp
+        tests/test_withdraw.cpp
+        tests/test_liquidity.cpp
+        tests/test_crypto.cpp
+
+        # Domain layer source (UI layer not tested here)
         src/Account.cpp
         src/AuthService.cpp
         src/Bucket.cpp
         src/Sha256.cpp
         src/Transaction.cpp
 )
+
+target_include_directories(tests_runner PRIVATE include)
+target_compile_features(tests_runner PRIVATE cxx_std_17)
