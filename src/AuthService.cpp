@@ -8,15 +8,6 @@
 #include "../include/AuthService.h"
 #include "../include/Sha256.h"
 
-std::string toLowerUsername(const std::string& s) {
-  std::string out;
-  out.reserve(s.size());
-  for (const char c: s) {
-    out.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
-  }
-  return out;
-}
-
 User::User(std::string username, std::string passwordHash) :
     username_(std::move(username)), passwordHash_(std::move(passwordHash)) {}
 
@@ -27,7 +18,7 @@ Status AuthService::registerUser(const std::string& username, const std::string&
   if (password.size() < 4)
     return Status::failure("Password must be at least 4 characters.");
 
-  if (const std::string key = toLowerUsername(username); users_.find(key) != users_.end())
+  if (users_.find(username) != users_.end())
     return Status::failure("Username already exists. Please choose another.");
 
   std::string hash = Sha256::hash(password);
@@ -39,7 +30,7 @@ LoginOutcome AuthService::login(const std::string& username, const std::string& 
   if (locked_)
     return LoginOutcome::Locked;
 
-  const auto it = users_.find(toLowerUsername(username));
+  const auto it = users_.find(username);
 
   if (const bool ok = it != users_.end() && it->second->passwordHash() == Sha256::hash(password); !ok) {
     ++failedAttempts_;
