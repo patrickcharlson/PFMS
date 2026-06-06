@@ -7,7 +7,6 @@
 
 #include <cstdint>
 #include <string>
-#include <cstdint>
 
 class Sha256 {
 public:

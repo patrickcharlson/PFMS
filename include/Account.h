@@ -5,11 +5,12 @@
 #ifndef PFMS_ACCOUNT_H
 #define PFMS_ACCOUNT_H
 
+#include <string>
+#include <vector>
+
 #include "Bucket.h"
 #include "Transaction.h"
 
-#include <string>
-#include <vector>
 
 struct Status {
   bool ok;
@@ -56,6 +57,10 @@ public:
 
   // Wipes all in-memory state. Called on logout.
   void clearSession();
+
+  // ---- Persistence support ----
+  void persistenceRestore(double totalBalance, double unallocated);
+  void persistenceAddBucket(const std::string& name, double percentage, double balance, bool committed);
 
 private:
   std::vector<Bucket> buckets_;

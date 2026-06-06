@@ -6,7 +6,7 @@
 // Color.cpp
 //
 
-#include "../include/Color.h"
+#include "Color.h"
 
 #ifdef _WIN32
 #include <windows.h>

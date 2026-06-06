@@ -2,21 +2,32 @@
 // Created by Patrick Charlson on 25/4/2026.
 //
 
-#include "../include/PFMS.h"
-
-#include "../include/Color.h"
-
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
+
+#include "Color.h"
+#include "PFMS.h"
+#include "Persistence.h"
 
 
 static constexpr int LINE_WIDTH = 40;
 static const std::string DIVIDER(LINE_WIDTH, '=');
 static const std::string SUBDIV(LINE_WIDTH, '-');
 
-PFMS::PFMS() = default;
+PFMS::PFMS() {
+  dataPath_ = Persistence::defaultDataPath();
+
+  if (Persistence::fileExists(dataPath_)) {
+    if (std::string err; !Persistence::load(auth_, dataPath_, err)) {
+      // We can't show this through showError() yet because run() hasn't been
+      // called - but stdout works fine. Print and continue with a fresh state
+      // so the user can still register or log in.
+      std::cerr << "[WARN] Could not load saved data (" << err << "). Starting with a fresh session.\n";
+    }
+  }
+}
 
 void PFMS::run() {
   while (!quit_) {
@@ -27,10 +38,8 @@ void PFMS::run() {
       quit_ = true;
       break;
     }
-    if (!auth_.currentUser())
-      runWelcome();
-    else
-      runMainMenu();
+    if (!auth_.currentUser()) runWelcome();
+    else runMainMenu();
   }
 }
 
@@ -77,51 +86,45 @@ bool PFMS::readLine(const std::string& prompt, std::string& out, bool /*maskHelp
 
 bool PFMS::readDouble(const std::string& prompt, double& out) {
   std::string line;
-  if (!readLine(prompt, line))
-    return false;
-  if (line == "?")
-    return false;
+  if (!readLine(prompt, line)) return false;
+  if (line == "?") return false;
   try {
     size_t idx = 0;
     const double v = std::stod(line, &idx);
-    if (idx != line.size())
-      return false;
+    if (idx != line.size()) return false;
     out = v;
     return true;
-  } catch (...) {
-    return false;
-  }
+  } catch (...) { return false; }
 }
 
 bool PFMS::readSizeT(const std::string& prompt, size_t& out) {
   std::string line;
-  if (!readLine(prompt, line))
-    return false;
-  if (line == "?")
-    return false;
+  if (!readLine(prompt, line)) return false;
+  if (line == "?") return false;
   try {
     size_t idx = 0;
     const long long v = std::stoll(line, &idx);
-    if (idx != line.size() || v < 0)
-      return false;
+    if (idx != line.size() || v < 0) return false;
     out = static_cast<size_t>(v);
     return true;
-  } catch (...) {
-    return false;
-  }
+  } catch (...) { return false; }
 }
 
 bool PFMS::confirm(const std::string& prompt) {
   std::string line;
   while (true) {
-    if (!readLine(prompt + " (Y/N):", line))
-      return false;
-    if (line == "Y" || line == "y")
-      return true;
-    if (line == "N" || line == "n")
-      return false;
+    if (!readLine(prompt + " (Y/N):", line)) return false;
+    if (line == "Y" || line == "y") return true;
+    if (line == "N" || line == "n") return false;
     showError("Please enter Y or N.");
   }
+}
+
+// ---------- Persistence ----------
+
+void PFMS::persistSilently() const {
+  if (dataPath_.empty()) return;
+  if (std::string err; !Persistence::save(auth_, dataPath_, err)) { showError("Could not save state: " + err); }
 }
 
 
@@ -158,20 +161,12 @@ void PFMS::runWelcome() {
   std::cout << " [1] Login\n [2] Register\n [3] Exit\n";
   showFooter("Enter choice (1-3) or ? for help:");
   std::string line;
-  if (!readLine("", line)) {
-    quit_ = true;
-  }
-  if (line == "?") {
-    showHelp("Welcome");
-  }
-  if (line == "1")
-    runLogin();
-  else if (line == "2")
-    runRegister();
-  else if (line == "3")
-    quit_ = true;
-  else
-    showError("Please enter 1, 2 or 3.");
+  if (!readLine("", line)) { quit_ = true; }
+  if (line == "?") { showHelp("Welcome"); }
+  if (line == "1") runLogin();
+  else if (line == "2") runRegister();
+  else if (line == "3") quit_ = true;
+  else showError("Please enter 1, 2 or 3.");
 }
 
 void PFMS::runRegister() {
@@ -185,8 +180,7 @@ void PFMS::runRegister() {
     showError("Password cannot be empty.");
     return;
   }
-  if (auto [ok, message] = auth_.registerUser(username, password); !ok)
-    showError(message);
+  if (auto [ok, message] = auth_.registerUser(username, password); !ok) showError(message);
 
   else {
     showInfo(message);
@@ -198,20 +192,14 @@ void PFMS::runRegister() {
 void PFMS::runLogin() {
   showHeader("LOGIN");
   std::string username, password;
-  if (!readLine("Username:", username))
-    return;
-  if (!readLine("Password:", password))
-    return;
+  if (!readLine("Username:", username)) return;
+  if (!readLine("Password:", password)) return;
   switch (const auto outcome = auth_.login(username, password); outcome) {
-    case LoginOutcome::Success:
-      showInfo("Welcome back, " + username + ".");
-      break;
+    case LoginOutcome::Success: showInfo("Welcome back, " + username + "."); break;
     case LoginOutcome::BadCredentials:
       showError("Invalid credentials. Attempts remaining: " + std::to_string(3 - auth_.failedAttempts()) + ".");
       break;
-    case LoginOutcome::Locked:
-      showError("Session locked after 3 failed login attempts, Restart required.");
-      break;
+    case LoginOutcome::Locked: showError("Session locked after 3 failed login attempts, Restart required."); break;
   }
 }
 
@@ -233,26 +221,17 @@ void PFMS::runMainMenu() {
     quit_ = true;
     return;
   }
-  if (line == "?") {
-    showHelp("Main Menu");
-  }
-  if (line == "1")
-    runAccountSummary();
-  else if (line == "2")
-    runBucketMenu();
-  else if (line == "3")
-    runDeposit();
-  else if (line == "4")
-    runWithdraw();
-  else if (line == "5")
-    runTransfer();
-  else if (line == "6")
-    runJournal();
+  if (line == "?") { showHelp("Main Menu"); }
+  if (line == "1") runAccountSummary();
+  else if (line == "2") runBucketMenu();
+  else if (line == "3") runDeposit();
+  else if (line == "4") runWithdraw();
+  else if (line == "5") runTransfer();
+  else if (line == "6") runJournal();
   else if (line == "7") {
     auth_.logout();
     showInfo("Logged out. Session cleared.");
-  } else
-    showError("Please enter a number from 1 to 7.");
+  } else showError("Please enter a number from 1 to 7.");
 }
 
 
@@ -269,12 +248,9 @@ void PFMS::runAccountSummary() {
   std::cout << " " << Color::Bold << "BUCKETS:" << Color::Reset << "\n";
 
   auto pctColor = [](const double p) {
-    if (p >= 50.0)
-      return Color::BrightYellow; // big chunk
-    if (p >= 25.0)
-      return Color::Cyan; // medium
-    if (p > 0.0)
-      return Color::Dim; // small
+    if (p >= 50.0) return Color::BrightYellow; // big chunk
+    if (p >= 25.0) return Color::Cyan; // medium
+    if (p > 0.0) return Color::Dim; // small
     return Color::Dim;
   };
 
@@ -290,8 +266,7 @@ void PFMS::runAccountSummary() {
                 << b.name() << " " << Color::Green << std::setw(10) << fmtMoney(b.balance()) << Color::Reset << " "
                 << pctColor(b.percentage()) << std::setw(4) << (std::to_string(static_cast<int>(b.percentage())) + "%")
                 << Color::Reset << " ";
-      if (b.committed())
-        std::cout << Color::Yellow << "COMMITTED" << Color::Reset;
+      if (b.committed()) std::cout << Color::Yellow << "COMMITTED" << Color::Reset;
       std::cout << "\n";
     }
   }
@@ -311,24 +286,17 @@ void PFMS::runBucketMenu() {
               << " [4] Toggle Committed Status\n [5] Back\n";
     showFooter("Enter choice (1-5) or ? for help:");
     std::string line;
-    if (!readLine("", line))
-      return;
+    if (!readLine("", line)) return;
     if (line == "?") {
       showHelp("Bucket Menu");
       continue;
     }
-    if (line == "1")
-      runCreateBucket();
-    else if (line == "2")
-      runEditBucket();
-    else if (line == "3")
-      runDeleteBucket();
-    else if (line == "4")
-      runToggleCommitted();
-    else if (line == "5")
-      return;
-    else
-      showError("Please enter a number from 1 to 5.");
+    if (line == "1") runCreateBucket();
+    else if (line == "2") runEditBucket();
+    else if (line == "3") runDeleteBucket();
+    else if (line == "4") runToggleCommitted();
+    else if (line == "5") return;
+    else showError("Please enter a number from 1 to 5.");
   }
 }
 
@@ -347,10 +315,8 @@ void PFMS::runCreateBucket() {
   }
   std::string commitLine;
   const bool committed = confirm("Mark this bucket as Committed?");
-  if (auto [ok, message] = acc.createBucket(name, pct, committed); ok)
-    showInfo(message);
-  else
-    showError(message);
+  if (auto [ok, message] = acc.createBucket(name, pct, committed); ok) showInfo(message);
+  else showError(message);
 }
 
 void PFMS::runEditBucket() {
@@ -379,10 +345,8 @@ void PFMS::runEditBucket() {
     showError("Please enter a numeric percentage.");
     return;
   }
-  if (auto [ok, message] = acc.editBucket(sel - 1, newName, newPct); ok)
-    showInfo(message);
-  else
-    showError(message);
+  if (auto [ok, message] = acc.editBucket(sel - 1, newName, newPct); ok) showInfo(message);
+  else showError(message);
 }
 
 void PFMS::runDeleteBucket() {
@@ -401,16 +365,15 @@ void PFMS::runDeleteBucket() {
     showError("Invalid bucket selection.");
     return;
   }
-  showWarning("Deleting '" + acc.buckets()[sel - 1].name() + "' will return its balance (" +
-              fmtMoney(acc.buckets()[sel - 1].balance()) + ") to the unallocated pool.");
+  showWarning(
+          "Deleting '" + acc.buckets()[sel - 1].name() + "' will return its balance (" +
+          fmtMoney(acc.buckets()[sel - 1].balance()) + ") to the unallocated pool.");
   if (!confirm("Proceed with deletion?")) {
     showInfo("Deletion cancelled.");
     return;
   }
-  if (auto [ok, message] = acc.deleteBucket(sel - 1); ok)
-    showInfo(message);
-  else
-    showError(message);
+  if (auto [ok, message] = acc.deleteBucket(sel - 1); ok) showInfo(message);
+  else showError(message);
 }
 
 void PFMS::runToggleCommitted() {
@@ -491,8 +454,9 @@ void PFMS::runWithdraw() {
     return;
   }
   if (check == WithdrawCheck::ExceedsSafeToSpend) {
-    showWarning("Withdrawal of " + fmtMoney(amount) + " exceeds your Safe to Spend (" + fmtMoney(acc.safeToSpend()) +
-                ") and will draw on COMMITTED funds.");
+    showWarning(
+            "Withdrawal of " + fmtMoney(amount) + " exceeds your Safe to Spend (" + fmtMoney(acc.safeToSpend()) +
+            ") and will draw on COMMITTED funds.");
     if (!confirm("Proceed anyway?")) {
       showInfo("Withdraw cancelled.");
       return;
@@ -530,24 +494,19 @@ void PFMS::runTransfer() {
     showError("Invalid bucket selection.");
     return;
   }
-  if (auto [ok, message] = acc.transferFromUnallocated(sel - 1, amount); ok)
-    showInfo(message);
-  else
-    showError(message);
+  if (auto [ok, message] = acc.transferFromUnallocated(sel - 1, amount); ok) showInfo(message);
+  else showError(message);
 }
 
 void PFMS::runJournal() {
   const auto& acc = auth_.currentUser()->account();
   showHeader("TRANSACTION JOURNAL");
 
-  auto typeColor = [](TxType t) {
+  auto typeColor = [](const TxType t) {
     switch (t) {
-      case TxType::Deposit:
-        return Color::Green;
-      case TxType::Withdrawal:
-        return Color::Red;
-      case TxType::Transfer:
-        return Color::Cyan;
+      case TxType::Deposit: return Color::Green;
+      case TxType::Withdrawal: return Color::Red;
+      case TxType::Transfer: return Color::Cyan;
     }
     return Color::Reset;
   };

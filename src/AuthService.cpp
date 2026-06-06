@@ -5,14 +5,14 @@
 #include <cctype>
 #include <string>
 
-#include "../include/AuthService.h"
-#include "../include/Sha256.h"
+#include "AuthService.h"
+#include "Sha256.h"
 
 
 std::string toLowerUsername(const std::string& s) {
   std::string out;
   out.reserve(s.size());
-  for (const char c : s) {
+  for (const char c: s) {
     out.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
   }
   return out;
@@ -24,14 +24,11 @@ User::User(std::string username, std::string passwordHash) :
 
 
 Status AuthService::registerUser(const std::string& username, const std::string& password) {
-  if (username.empty())
-    return Status::failure("Username cannot be empty.");
-  if (password.size() < 4)
-    return Status::failure("Password must be at least 4 characters.");
+  if (username.empty()) return Status::failure("Username cannot be empty.");
+  if (password.size() < 4) return Status::failure("Password must be at least 4 characters.");
 
   const std::string key = toLowerUsername(username);
-  if (users_.find(key) != users_.end())
-    return Status::failure("Username already exists. Please choose another.");
+  if (users_.find(key) != users_.end()) return Status::failure("Username already exists. Please choose another.");
 
   std::string hash = Sha256::hash(password);
   users_[key] = std::make_unique<User>(username, hash);
@@ -39,15 +36,13 @@ Status AuthService::registerUser(const std::string& username, const std::string&
 }
 
 LoginOutcome AuthService::login(const std::string& username, const std::string& password) {
-  if (locked_)
-    return LoginOutcome::Locked;
+  if (locked_) return LoginOutcome::Locked;
 
   const auto it = users_.find(toLowerUsername(username));
 
   if (const bool ok = it != users_.end() && it->second->passwordHash() == Sha256::hash(password); !ok) {
     ++failedAttempts_;
-    if (failedAttempts_ >= 3)
-      locked_ = true;
+    if (failedAttempts_ >= 3) locked_ = true;
     return locked_ ? LoginOutcome::Locked : LoginOutcome::BadCredentials;
   }
 
@@ -57,7 +52,14 @@ LoginOutcome AuthService::login(const std::string& username, const std::string& 
 }
 
 void AuthService::logout() {
-  if (currentUser_) {
-    currentUser_ = nullptr;
-  }
+  if (currentUser_) { currentUser_ = nullptr; }
+}
+
+User* AuthService::persistenceAddUser(const std::string& username, const std::string& passwordHash) {
+  const std::string key = toLowerUsername(username);
+  if (users_.find(key) != users_.end()) return nullptr; // duplicate – Caller treats as corrupt data
+  auto user = std::make_unique<User>(username, passwordHash);
+  User* raw = user.get();
+  users_[key] = std::move(user);
+  return raw;
 }

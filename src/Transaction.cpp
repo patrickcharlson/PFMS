@@ -2,12 +2,13 @@
 // Created by sithm on 29/04/2026.
 //
 
-#include "../include/Transaction.h"
 
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <utility>
+
+#include "Transaction.h"
 
 
 Transaction::Transaction(const TxType type, const double amount, std::string description) :
@@ -15,12 +16,9 @@ Transaction::Transaction(const TxType type, const double amount, std::string des
 
 std::string Transaction::typeLabel() const {
   switch (type_) {
-    case TxType::Deposit:
-      return "DEPOSIT";
-    case TxType::Withdrawal:
-      return "WITHDRAWAL";
-    case TxType::Transfer:
-      return "TRANSFER";
+    case TxType::Deposit: return "DEPOSIT";
+    case TxType::Withdrawal: return "WITHDRAWAL";
+    case TxType::Transfer: return "TRANSFER";
   }
   return "UNKNOWN";
 }

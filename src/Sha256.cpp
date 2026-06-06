@@ -2,11 +2,13 @@
 // Created by Patrick Charlson on 25/4/2026.
 //
 
-#include "../include/Sha256.h"
 #include <cstdint>
 #include <iomanip>
 #include <sstream>
-#include <string>
+#include <string> 
+
+#include "Sha256.h"
+
 
 static constexpr uint32_t K[64] = {
         0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,

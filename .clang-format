@@ -7,7 +7,11 @@ AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
 AlignOperands: true
 AlignTrailingComments: false
+AlignAfterOpenBracket: true
 AlwaysBreakTemplateDeclarations: Yes
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+AllowShortBlocksOnASingleLine: Always
 BraceWrapping:
   AfterCaseLabel: false
   AfterClass: false
@@ -26,35 +30,33 @@ BraceWrapping:
   SplitEmptyRecord: true
   SplitEmptyNamespace: true
 BreakBeforeBraces: Custom
+BinPackArguments: false
+BreakAfterOpenBracketFunction: true
 BreakConstructorInitializers: AfterColon
 BreakConstructorInitializersBeforeComma: false
 ColumnLimit: 120
 ConstructorInitializerAllOnOneLineOrOnePerLine: false
 ContinuationIndentWidth: 8
 ReferenceAlignment: Left
-IncludeBlocks: Preserve
+IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '^"(llvm|llvm-c|clang|clang-c)/'
-    Priority: 2
-    SortPriority: 2
-    CaseSensitive: true
-  - Regex: '^(<|"(gtest|gmock|isl|json)/)'
-    Priority: 3
-  - Regex: '<[[:alnum:].]+>'
-    Priority: 4
-  - Regex: '.*'
+  - Regex: '^<[^.]+>'        # STL: <vector>, <string> (no dot)
     Priority: 1
-    SortPriority: 0
-IncludeIsMainRegex: '([-_](test|unittest))?$'
+  - Regex: '^<.*\.h>'        # C system: <stdio.h>, <sys/stat.h>
+    Priority: 2
+  - Regex: '^".*"'           # User headers
+    Priority: 3
+IncludeIsMainRegex: '^$'
 IndentCaseLabels: true
 IndentWidth: 2
 InsertNewlineAtEOF: true
 MacroBlockBegin: ''
 MacroBlockEnd: ''
 MaxEmptyLinesToKeep: 2
+PointerAlignment: Left
 NamespaceIndentation: All
 SpaceAfterCStyleCast: true
-SortIncludes: true
+SortIncludes: CaseSensitive
 SpaceAfterTemplateKeyword: false
 SpaceBeforeRangeBasedForLoopColon: false
 SpaceInEmptyParentheses: false
@@ -62,5 +64,4 @@ SpacesInAngles: false
 SpacesInConditionalStatement: false
 SpacesInCStyleCastParentheses: false
 SpacesInParentheses: false
-TabWidth: 4
 ...

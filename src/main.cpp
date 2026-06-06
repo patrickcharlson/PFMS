@@ -1,7 +1,8 @@
 
-#include "../include/Color.h"
-#include "../include/PFMS.h"
 #include <iostream>
+
+#include "Color.h"
+#include "PFMS.h"
 
 
 int main() {

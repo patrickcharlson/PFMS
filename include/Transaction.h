@@ -5,8 +5,8 @@
 #ifndef PFMS_TRANSACTION_H
 #define PFMS_TRANSACTION_H
 
-#include <string>
 #include <ctime>
+#include <string>
 
 enum class TxType { Deposit, Withdrawal, Transfer };
 

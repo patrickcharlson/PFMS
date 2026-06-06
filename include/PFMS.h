@@ -18,6 +18,8 @@ private:
   AuthService auth_;
   bool quit_{false};
 
+  std::string dataPath_;
+
   // ---- Screen builders (layout: title, body, footer) ----
 
   static void showHeader(const std::string& title);
@@ -56,6 +58,8 @@ private:
   void runTransfer();
   void runJournal();
 
+  // ---- Persistence helpers ----
+  void persistSilently() const;
 
   // ---- Formatting ----
 

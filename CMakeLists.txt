@@ -21,6 +21,10 @@ add_executable(PFMS
         src/Bucket.cpp
         src/Color.cpp
         src/Transaction.cpp
+        include/Persistence.h
+        src/Persistence.cpp
+        include/Json.h
+        src/Json.cpp
 )
 
 # Test runner — separate executable, not built by default
